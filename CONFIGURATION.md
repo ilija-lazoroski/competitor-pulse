@@ -180,4 +180,22 @@ How long the poller waits when no competitor is due
 *Optional*, default value: `1`
 
 How long to pause all requests after a 429 without a usable Retry-After
+
+## `CP_CLEANER_RETENTION_DAYS`
+
+*Optional*, default value: `90`
+
+How long snapshots are kept, by when they were fetched
+
+## `CP_CLEANER_INTERVAL_SECONDS`
+
+*Optional*, default value: `3600`
+
+How often the cleaner deletes what is older
+
+## `CP_CLEANER_BATCH_SIZE`
+
+*Optional*, default value: `10000`
+
+Most snapshots deleted in one transaction, so each one stays short
 <!-- options-end -->

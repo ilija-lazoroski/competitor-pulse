@@ -5,14 +5,16 @@ from service_kit.logging import configure_logger, logger
 
 from competitor_pulse.configuration import load_configuration
 from competitor_pulse.database import Database
+from competitor_pulse.poller.cleaner import Cleaner
 from competitor_pulse.poller.listing_source import HttpListingSource
 from competitor_pulse.poller.poll_repository import PostgresPollRepository
 from competitor_pulse.poller.poller import Poller
 from competitor_pulse.poller.rate_limiter import RateLimiter
+from competitor_pulse.poller.retention_repository import PostgresRetentionRepository
 
 
 async def run() -> None:
-    """Loads the configuration, then polls until SIGTERM or SIGINT, and closes everything.
+    """Loads the configuration, then polls and cleans until SIGTERM or SIGINT, and closes all.
 
     :raises ValidationError: If a setting is missing or invalid
     """
@@ -28,6 +30,7 @@ async def run() -> None:
         RateLimiter(config.poller.requests_per_second),
         config.poller,
     )
+    cleaner = Cleaner(PostgresRetentionRepository(database.engine), config.cleaner)
 
     current = asyncio.current_task()
     loop = asyncio.get_running_loop()
@@ -36,7 +39,9 @@ async def run() -> None:
 
     await database.open()
     try:
-        await poller.run()
+        async with asyncio.TaskGroup() as tasks:
+            tasks.create_task(poller.run())
+            tasks.create_task(cleaner.run())
     except asyncio.CancelledError:
         logger.info("Poller stopping")
     finally:

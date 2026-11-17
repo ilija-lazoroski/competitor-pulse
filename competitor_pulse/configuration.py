@@ -146,6 +146,29 @@ class PollerConfiguration(BaseSettings, ServiceKitBaseModel):
     )
 
 
+class CleanerConfiguration(BaseSettings, ServiceKitBaseModel):
+    """Settings of the cleaner, which deletes old history, from CP_CLEANER_* variables."""
+
+    model_config = SettingsConfigDict(
+        env_parse_none_str="None",
+        env_prefix="CP_CLEANER_",
+        extra="ignore",
+        hide_input_in_errors=True,
+    )
+
+    retention_days: int = Field(
+        default=90, ge=1, description="How long snapshots are kept, by when they were fetched"
+    )
+    interval_seconds: float = Field(
+        default=3600, gt=0, description="How often the cleaner deletes what is older"
+    )
+    batch_size: int = Field(
+        default=10_000,
+        ge=1,
+        description="Most snapshots deleted in one transaction, so each one stays short",
+    )
+
+
 class CompetitorPulseConfiguration(ServiceConfiguration):
     """Settings come from CP_* environment variables or the .env file at CP_CONFIG_PATH."""
 
@@ -160,12 +183,13 @@ class CompetitorPulseConfiguration(ServiceConfiguration):
     api: ApiConfiguration = Field(description="The competitor API settings")
     source: SourceConfiguration = Field(description="The listing source settings")
     poller: PollerConfiguration = Field(description="The poller settings")
+    cleaner: CleanerConfiguration = Field(description="The cleaner settings")
 
 
 def load_configuration() -> CompetitorPulseConfiguration:
     """Loads the settings from CP_* environment variables and the .env file at CP_CONFIG_PATH.
 
-    :returns: The settings, with the database, API, source and poller settings as
+    :returns: The settings, with the database, API, source, poller and cleaner settings as
               sub-configurations
     :raises ValidationError: If a setting is missing or invalid
     """
@@ -178,10 +202,12 @@ def load_configuration() -> CompetitorPulseConfiguration:
     api = ApiConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
     source = SourceConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
     poller = PollerConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
+    cleaner = CleanerConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
     return CompetitorPulseConfiguration(
         _env_file=config_file_path,
         database=database,
         api=api,
         source=source,
-        poller=poller,  # type: ignore[call-arg]
+        poller=poller,
+        cleaner=cleaner,  # type: ignore[call-arg]
     )
