@@ -378,16 +378,16 @@ Where we bent the pattern, on purpose:
 
 ## AI tools
 
-Used **Claude Code** (Claude Opus 5.5) on which I decided what tech stack we are using
-and the actual architecture that is going to be used.
+I used **Claude Code** (Claude Opus 5.5) throughout. I chose the tech stack and the architecture;
+for each part it proposed a design, and I approved or changed it before any code was written.
 
-On implementation of what I have purposed there was something that I have changed and that was:
-**the repositories.** It first put the poller's methods (claiming due competitors, saving polls)
-into the API's `CompetitorRepository`, arguing that saving a poll touches both tables. I had
-it split into one repository per consumer: the API, the poller, the summarizer and the cleaner
-each depend on their own port with only the methods they use. The transaction argument did not hold,
-because a single method can still cover both tables; and the split removed methods that each side
-must never call, and the API settings the poller had to pass in only to build the shared repository.
+One place where I changed what it proposed: **the repositories.** It first put the poller's methods
+(claiming due competitors, saving polls) into the API's `CompetitorRepository`, arguing that saving
+a poll touches both tables. I had it split into one repository per consumer: the API, the poller,
+the summarizer and the cleaner each depend on their own port with only the methods they use. The
+transaction argument did not hold, because a single method can still cover both tables; and the
+split removed methods that each side must never call, and the API settings the poller had to pass in
+only to build the shared repository.
 
 ## Development setup
 
