@@ -42,13 +42,16 @@ describe("summaryNote", () => {
     expect(note.text).not.toBe("");
   });
 
-  it.each<SummaryStatus>(["llm_failed", "llm_unusable"])("gives the reason for %s", (status) => {
-    const note = summaryNote(
-      snapshot({ summaryStatus: status, summaryError: "The LLM answered with HTTP 500" }),
-    );
+  it.each<[SummaryStatus, string]>([
+    ["llm_failed", "The LLM answered with HTTP 500"],
+    ["llm_unusable", "The LLM's answer was unusable: the answer contains Markdown or HTML"],
+  ])("gives the stored reason for %s once", (summaryStatus, summaryError) => {
+    const note = summaryNote(snapshot({ summaryStatus, summaryError }));
 
-    expect(note.tone).toBe("warning");
-    expect(note.text).toContain("The LLM answered with HTTP 500");
+    expect(note).toEqual({
+      tone: "warning",
+      text: `Change detected, but there is no summary. ${summaryError}.`,
+    });
   });
 });
 

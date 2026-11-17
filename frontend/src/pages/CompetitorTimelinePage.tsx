@@ -128,11 +128,14 @@ function ChangeList({ changes }: { changes: Snapshot["changes"] }) {
       {lines.map((line) => (
         <li key={line.field} className="change">
           <span className="change-label">{line.label}</span>
-          <span className="change-old">{line.old}</span>
-          <span className="change-arrow" aria-label="changed to">
-            →
+          {/* One run of text, so a long value wraps like a sentence inside its column. */}
+          <span className="change-value">
+            <span className="change-old">{line.old}</span>
+            <span className="change-arrow" aria-label="changed to">
+              {" → "}
+            </span>
+            <span className="change-new">{line.new}</span>
           </span>
-          <span className="change-new">{line.new}</span>
         </li>
       ))}
     </ul>

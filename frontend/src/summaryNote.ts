@@ -31,7 +31,8 @@ const NONE = "none";
  * @returns The summary itself, or a plain explanation of why there is none
  */
 export function summaryNote(snapshot: Snapshot): SummaryNote {
-  const reason = snapshot.summaryError ?? "no reason given";
+  // The stored reason already says what went wrong, like "The LLM answered with HTTP 500".
+  const reason = asSentence(snapshot.summaryError ?? "No reason was given");
   switch (snapshot.summaryStatus) {
     case "ready":
       return { tone: "summary", text: snapshot.summary ?? "" };
@@ -44,12 +45,8 @@ export function summaryNote(snapshot: Snapshot): SummaryNote {
     case "pending":
       return { tone: "waiting", text: "Change detected. The summary is being written." };
     case "llm_failed":
-      return { tone: "warning", text: `Change detected, but the summary failed: ${reason}.` };
     case "llm_unusable":
-      return {
-        tone: "warning",
-        text: `Change detected, but the LLM's answer could not be used: ${reason}.`,
-      };
+      return { tone: "warning", text: `Change detected, but there is no summary. ${reason}` };
     case "cap_reached":
       return {
         tone: "warning",
@@ -74,4 +71,8 @@ export function changeLines(changes: Snapshot["changes"]): ChangeLine[] {
       ? [{ field, label: FIELD_LABELS[field], old: change.old ?? NONE, new: change.new ?? NONE }]
       : [];
   });
+}
+
+function asSentence(text: string): string {
+  return /[.!?]$/.test(text) ? text : `${text}.`;
 }
