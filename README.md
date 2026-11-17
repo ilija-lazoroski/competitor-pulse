@@ -51,6 +51,17 @@ CP_TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres poet
   for now, so a check when adding could not tell them apart; it would also put a slow,
   rate-limited source in the path of the request. The first poll records `not_found`, and the
   timeline shows it. A typo is therefore noticed after the first poll, not when it is added.
+- **What counts as a change.** The parser first removes the source's noise (extra fields,
+  whitespace, HTML entities, and the many ways to write a price), so two listings that differ only
+  in those are equal. A change is then any different value in the title, tagline, price or
+  description, compared with the competitor's latest earlier listing; prices compare as values, so
+  `$29/mo` and `USD 29 per month` are the same. A field the source left out or sent unreadable is
+  unknown, not removed, so an incomplete poll never counts as a change; a failed poll does not
+  either, and does not reset the comparison. A competitor that disappears from the source, or comes
+  back unchanged, is a change with a fixed summary, which costs no LLM call. Every other change
+  waits for the LLM's summary. We considered a threshold for "small" edits (for example a one-word
+  change in the description) and left it out: how much an edit matters is for the summary to say,
+  not a string-similarity number we would have to tune.
 
 ## Development setup
 

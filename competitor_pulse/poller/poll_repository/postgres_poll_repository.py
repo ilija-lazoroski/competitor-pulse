@@ -1,16 +1,17 @@
 from datetime import timedelta
-from typing import Any
+from typing import Any, Final
 
-from sqlalchemy import exists, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from competitor_pulse.errors import poll_error_adapter
-from competitor_pulse.models import PollResult
+from competitor_pulse.models import Listing, PollResult
+from competitor_pulse.poller.change_detection import ChangeDecision, decide
 from competitor_pulse.poller.poll_repository.poll_repository import PollRepository
 from competitor_pulse.tables import competitors, is_tracked, snapshots
-from competitor_pulse.types import CompetitorId, PollOutcome, SummaryStatus
+from competitor_pulse.types import CompetitorId, PollOutcome, Price, changes_adapter
 
-_has_listing = snapshots.c.outcome.in_([PollOutcome.OK, PollOutcome.INCOMPLETE])
+_LISTING_OUTCOMES: Final = (PollOutcome.OK, PollOutcome.INCOMPLETE)
 
 
 class PostgresPollRepository(PollRepository):
@@ -51,16 +52,94 @@ class PostgresPollRepository(PollRepository):
             if not await self._lock_tracked(connection, competitor_id):
                 return False
 
-            had_listing = await connection.scalar(
-                select(exists().where(snapshots.c.competitor_id == competitor_id, _has_listing))
+            decision = decide(
+                result,
+                previous_listing=await self._latest_listing(connection, competitor_id),
+                previously_delisted=await self._latest_answer_was_not_found(
+                    connection, competitor_id
+                ),
             )
             await connection.execute(
                 snapshots.insert().values(
-                    competitor_id=competitor_id,
-                    **_snapshot_values(result, first_listing=not had_listing),
+                    competitor_id=competitor_id, **_snapshot_values(result, decision)
                 )
             )
+            if decision.changed:
+                await connection.execute(
+                    competitors.update()
+                    .where(competitors.c.id == competitor_id)
+                    .values(
+                        last_changed_at=func.greatest(
+                            competitors.c.last_changed_at, result.fetched_at
+                        )
+                    )
+                )
             return True
+
+    @staticmethod
+    async def _latest_listing(
+        connection: AsyncConnection, competitor_id: CompetitorId
+    ) -> Listing | None:
+        """Reads the listing of the competitor's latest snapshot that has one.
+
+        Snapshots of one competitor are saved one at a time, so the highest id is the latest.
+
+        :param connection: The connection holding the competitor's lock
+        :param competitor_id: The competitor
+        :returns: The listing, or None if the competitor never had one
+        """
+        row = (
+            await connection.execute(
+                select(snapshots)
+                .where(
+                    snapshots.c.competitor_id == competitor_id,
+                    snapshots.c.outcome.in_(_LISTING_OUTCOMES),
+                )
+                .order_by(snapshots.c.id.desc())
+                .limit(1)
+            )
+        ).first()
+        if row is None:
+            return None
+        values = row._mapping
+        price = None
+        if values["price_amount"] is not None:
+            price = Price(
+                amount=values["price_amount"],
+                currency=values["price_currency"],
+                period=values["price_period"],
+                unit=values["price_unit"],
+            )
+        return Listing(
+            title=values["title"],
+            tagline=values["tagline"],
+            price=price,
+            description=values["description"],
+            missing_fields=[],
+        )
+
+    @staticmethod
+    async def _latest_answer_was_not_found(
+        connection: AsyncConnection, competitor_id: CompetitorId
+    ) -> bool:
+        """Tells whether the source did not list the competitor at its latest answered poll.
+
+        Failed polls got no answer, so they are skipped.
+
+        :param connection: The connection holding the competitor's lock
+        :param competitor_id: The competitor
+        :returns: True if that poll was not found; False if it had a listing or there was none
+        """
+        outcome = await connection.scalar(
+            select(snapshots.c.outcome)
+            .where(
+                snapshots.c.competitor_id == competitor_id,
+                snapshots.c.outcome.in_([*_LISTING_OUTCOMES, PollOutcome.NOT_FOUND]),
+            )
+            .order_by(snapshots.c.id.desc())
+            .limit(1)
+        )
+        return outcome == PollOutcome.NOT_FOUND
 
     @staticmethod
     async def _lock_tracked(connection: AsyncConnection, competitor_id: CompetitorId) -> bool:
@@ -78,22 +157,15 @@ class PostgresPollRepository(PollRepository):
         return tracked.first() is not None
 
 
-def _snapshot_values(result: PollResult, first_listing: bool) -> dict[str, Any]:
+def _snapshot_values(result: PollResult, decision: ChangeDecision) -> dict[str, Any]:
     """Builds the snapshot columns of a poll.
 
-    Until change detection exists, a listing is a baseline when it is the competitor's first
-    and unchanged otherwise.
-
     :param result: What the poll found
-    :param first_listing: True if the competitor has no earlier snapshot with a listing
+    :param decision: Whether the poll changed something, and its summary state
     :returns: The snapshot's column values, without the competitor id
     """
     listing = result.listing
     price = listing.price if listing else None
-    if result.outcome in (PollOutcome.OK, PollOutcome.INCOMPLETE):
-        summary_status = SummaryStatus.BASELINE if first_listing else SummaryStatus.NO_CHANGE
-    else:
-        summary_status = SummaryStatus.POLL_FAILED
     return {
         "fetched_at": result.fetched_at,
         "outcome": result.outcome,
@@ -107,9 +179,13 @@ def _snapshot_values(result: PollResult, first_listing: bool) -> dict[str, Any]:
         "price_period": price.period if price else None,
         "price_unit": price.unit if price else None,
         "description": listing.description if listing else None,
-        "changed": False,
-        "changes": None,
-        "summary": None,
-        "summary_status": summary_status,
+        "changed": decision.changed,
+        "changes": (
+            changes_adapter.dump_python(decision.changes, mode="json")
+            if decision.changes is not None
+            else None
+        ),
+        "summary": decision.summary,
+        "summary_status": decision.summary_status,
         "summary_error": None,
     }

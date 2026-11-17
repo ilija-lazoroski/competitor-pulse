@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 from competitor_pulse.app.competitor_repository import PostgresCompetitorRepository
 from competitor_pulse.configuration import ApiConfiguration
 from competitor_pulse.database import Database
-from competitor_pulse.errors import PollIncomplete, PollTimeout
+from competitor_pulse.errors import PollIncomplete, PollNotFound, PollTimeout
 from competitor_pulse.models import Listing, PollResult
 from competitor_pulse.poller.poll_repository import PostgresPollRepository
 from competitor_pulse.tables import competitors, snapshots
@@ -51,6 +51,21 @@ LISTING = Listing(
     description="Write, review and publish in one place.",
     missing_fields=[],
 )
+
+
+# LISTING as a snapshots row, for snapshots written without the repository.
+LISTING_ROW: dict[str, Any] = {
+    "outcome": "ok",
+    "title": LISTING.title,
+    "tagline": LISTING.tagline,
+    "price_amount": "12.00",
+    "price_currency": "USD",
+    "price_period": "month",
+    "price_unit": "seat",
+    "description": LISTING.description,
+    "changed": False,
+}
+NOT_FOUND = PollNotFound(message="The source does not list 'lumen-docs'")
 
 
 def poll(outcome: PollOutcome = PollOutcome.OK, **fields: Any) -> PollResult:
@@ -212,7 +227,7 @@ async def test_save_waits_for_a_concurrent_save_and_sees_its_snapshot(
         await other_save.execute(
             snapshots.insert().values(
                 {
-                    **SNAPSHOT,
+                    **LISTING_ROW,
                     "competitor_id": "acme-crm",
                     "fetched_at": START,
                     "summary_status": "baseline",
@@ -230,3 +245,91 @@ async def test_save_waits_for_a_concurrent_save_and_sees_its_snapshot(
         s.summary_status for s in await competitor_repository.list_snapshots("acme-crm", None, None)
     ]
     assert statuses == ["no_change", "baseline"]
+
+
+async def snapshots_of(competitor_repository: PostgresCompetitorRepository, competitor_id: str):
+    """The competitor's snapshots, oldest first."""
+    return list(reversed(await competitor_repository.list_snapshots(competitor_id, None, None)))
+
+
+async def test_a_change_is_stored_with_what_changed(
+    poll_repository: PostgresPollRepository,
+    competitor_repository: PostgresCompetitorRepository,
+    migrated_engine: Engine,
+):
+    await competitor_repository.add("lumen-docs")
+    cheaper_price = Price(
+        amount=Decimal("10.00"), currency="USD", period=PricePeriod.MONTH, unit="seat"
+    )
+    cheaper = LISTING.model_copy(update={"price": cheaper_price})
+
+    await poll_repository.save_poll("lumen-docs", poll())
+    await poll_repository.save_poll(
+        "lumen-docs", poll(fetched_at=START + INTERVAL, listing=cheaper)
+    )
+
+    baseline, change = await snapshots_of(competitor_repository, "lumen-docs")
+    assert (baseline.changed, baseline.summary_status) == (False, "baseline")
+    assert (change.changed, change.summary_status, change.price) == (True, "pending", "$10/seat/mo")
+    with migrated_engine.connect() as connection:
+        stored = connection.execute(select(snapshots.c.changes).where(snapshots.c.id == change.id))
+        assert stored.scalar_one() == {
+            "price": {
+                "old": {"amount": "12.00", "currency": "USD", "period": "month", "unit": "seat"},
+                "new": {"amount": "10.00", "currency": "USD", "period": "month", "unit": "seat"},
+            }
+        }
+    [competitor] = await competitor_repository.list_tracked()
+    assert competitor.last_changed_at == START + INTERVAL
+
+
+async def test_a_failed_poll_in_between_does_not_break_the_comparison(
+    poll_repository: PostgresPollRepository,
+    competitor_repository: PostgresCompetitorRepository,
+):
+    await competitor_repository.add("lumen-docs")
+    timeout = PollTimeout(message="The source did not answer within 10s", after_seconds=10)
+
+    await poll_repository.save_poll("lumen-docs", poll())
+    await poll_repository.save_poll(
+        "lumen-docs",
+        poll(fetched_at=START + INTERVAL, outcome=PollOutcome.FAILED, error=timeout, listing=None),
+    )
+    await poll_repository.save_poll("lumen-docs", poll(fetched_at=START + 2 * INTERVAL))
+
+    statuses = [s.summary_status for s in await snapshots_of(competitor_repository, "lumen-docs")]
+    assert statuses == ["baseline", "poll_failed", "no_change"]
+    [competitor] = await competitor_repository.list_tracked()
+    assert competitor.last_changed_at is None
+
+
+async def test_disappearing_and_coming_back_are_changes_with_fixed_summaries(
+    poll_repository: PostgresPollRepository,
+    competitor_repository: PostgresCompetitorRepository,
+):
+    await competitor_repository.add("lumen-docs")
+    not_found: dict[str, Any] = {
+        "outcome": PollOutcome.NOT_FOUND,
+        "error": NOT_FOUND,
+        "listing": None,
+    }
+
+    await poll_repository.save_poll("lumen-docs", poll())
+    await poll_repository.save_poll("lumen-docs", poll(fetched_at=START + INTERVAL, **not_found))
+    await poll_repository.save_poll(
+        "lumen-docs", poll(fetched_at=START + 2 * INTERVAL, **not_found)
+    )
+    await poll_repository.save_poll("lumen-docs", poll(fetched_at=START + 3 * INTERVAL))
+
+    history = [
+        (s.outcome, s.changed, s.summary_status, s.summary)
+        for s in await snapshots_of(competitor_repository, "lumen-docs")
+    ]
+    assert history == [
+        ("ok", False, "baseline", None),
+        ("not_found", True, "ready", "The listing is no longer on the source."),
+        ("not_found", False, "poll_failed", None),
+        ("ok", True, "ready", "The listing is back, unchanged."),
+    ]
+    [competitor] = await competitor_repository.list_tracked()
+    assert competitor.last_changed_at == START + 3 * INTERVAL

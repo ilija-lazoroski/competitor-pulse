@@ -81,6 +81,12 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 - Migration: `competitors.next_poll_at`, the poll schedule. Adding or
   restoring a competitor makes it due at once; claiming moves it one
   interval ahead (`FOR UPDATE SKIP LOCKED`).
+- Change detection (`poller/change_detection.py`), run while saving a poll
+  under the competitor's lock: a different title, tagline, price or
+  description than the latest earlier listing is a change (`changed`,
+  `changes` with old and new values, `summary_status` `pending`, and the
+  competitor's `last_changed_at`). Unreadable fields and failed polls never
+  count as a change.
 
 ### Changed
 ### Fixed
