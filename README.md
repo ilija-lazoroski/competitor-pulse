@@ -1,5 +1,37 @@
 # Competitor Pulse
 
+CompetitorPulse tracks competitors' product listings over time. A poller fetches each tracked
+competitor's listing from a listing source, keeps every poll as a snapshot, and decides whether the
+listing changed in a way that matters to a product manager. For each such change an LLM writes a
+short, plain-English summary. A small React app lists the competitors, shows which changed in the
+last 24 hours, and shows each one's history as a timeline, with the summary or the reason there is
+none.
+
+## Architecture
+
+![Architecture](docs/architecture.png)
+
+The diagram's source is [docs/architecture.drawio](docs/architecture.drawio) (open it in draw.io).
+
+- **frontend:** nginx serves the React app and forwards `/api` to the API, so the browser talks to
+  one origin.
+- **api:** FastAPI. It adds, removes and lists competitors and reads their snapshots, through the
+  `CompetitorRepository`; it never calls the source or the LLM.
+- **poller:** one process with three tasks, apart from the API so that it runs exactly once,
+  whatever the API's number of workers: there is one rate limit for the source, and this process
+  owns it.
+  - **Poller:** claims the competitors that are due, fetches their listings at most 4 requests per
+    second, decides whether each one changed and stores it as a snapshot.
+  - **Summarizer:** asks the LLM to summarize each pending change, newest first, within the daily
+    cap of LLM calls.
+  - **Cleaner:** deletes history older than 90 days.
+- **PostgreSQL:** `competitors` (with each one's poll schedule and last change), `snapshots` (one
+  per poll, failed polls included) and `llm_usage` (LLM calls per day, for the cap). The one-shot
+  **migrate** service brings the schema up to date with Alembic before the API and the poller start.
+- **The listing source and the LLM** are outside services: Compose starts the provided ones, and
+  the poller can be pointed at others (see [Point it at your own source and
+  LLM](#point-it-at-your-own-source-and-llm)).
+
 ## Configuration
 
 Configure the backend before anything else: it does not start until its required settings are
