@@ -129,5 +129,19 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
   the prompt, and the `<listing_change>` markers counted as HTML. Our own
   markers no longer count; any other markup still makes an answer unusable.
 
+- `alembic upgrade head` ignored the `.env` file at `CP_CONFIG_PATH` and
+  only read `CP_DATABASE_URL` from the environment; it now reads both, like
+  the API and the poller.
+
+- `CP_SOURCE_TIMEOUT_SECONDS` and `CP_LLM_TIMEOUT_SECONDS` limited each read
+  rather than the whole request, so a source or LLM that sent its answer
+  slowly could hold a request far longer; they now bound the whole request,
+  from connecting to the last byte.
+
+- Saving a poll looked up the competitor's latest answered poll by walking
+  the snapshots' primary key back through every competitor's rows, while
+  holding the competitor's lock; it now uses the timeline index (about 10 ms
+  down to 0.04 ms on 4 million snapshots).
+
 ### Removed
 ### Security
