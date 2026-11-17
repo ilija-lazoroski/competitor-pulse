@@ -99,6 +99,12 @@ export function CompetitorTimelinePage() {
       </div>
       <h1>{id}</h1>
       {error && <p className="error">{error}</p>}
+      {/* Only before the first answer: an error then says why the timeline is not there. */}
+      {!snapshots && !error && (
+        <p className="empty muted" role="status">
+          Loading snapshots…
+        </p>
+      )}
       {snapshots?.length === 0 && (
         <p className="empty muted">No snapshots yet. The first poll is on its way.</p>
       )}
