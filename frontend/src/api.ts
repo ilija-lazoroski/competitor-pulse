@@ -65,9 +65,12 @@ export function removeCompetitor(id: string): Promise<void> {
   return request(`/api/competitors/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
-export function listSnapshots(id: string, before?: number): Promise<Snapshot[]> {
-  const query = before === undefined ? "" : `?before=${before}`;
-  return request(`/api/competitors/${encodeURIComponent(id)}/snapshots${query}`);
+export function listSnapshots(id: string, limit: number, before?: number): Promise<Snapshot[]> {
+  const query = new URLSearchParams({ limit: String(limit) });
+  if (before !== undefined) {
+    query.set("before", String(before));
+  }
+  return request(`/api/competitors/${encodeURIComponent(id)}/snapshots?${query}`);
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {

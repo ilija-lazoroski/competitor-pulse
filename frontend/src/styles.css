@@ -272,22 +272,84 @@ a:hover {
 
 /* --- Timeline --- */
 
-.snapshot-list {
+/* A vertical line with one dot per snapshot; the dot's colour says what happened. */
+.timeline {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   margin: 0;
-  padding: 0;
+  padding: 0 0 0 var(--space-6);
   list-style: none;
 }
 
+.timeline::before {
+  content: "";
+  position: absolute;
+  top: var(--space-2);
+  bottom: var(--space-2);
+  left: 9px;
+  width: 2px;
+  background: var(--color-border);
+}
+
 .snapshot {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-small);
+}
+
+.snapshot::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--space-4) + 4px);
+  left: calc(-1 * var(--space-6) + 4px);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  box-shadow: 0 0 0 4px var(--color-surface);
+}
+
+/* Quiet polls step back: no box, a smaller grey dot. */
+.snapshot-quiet {
+  padding-top: var(--space-1);
+  padding-bottom: var(--space-1);
+  border-color: transparent;
+}
+
+.snapshot-quiet::before {
+  top: calc(var(--space-1) + 6px);
+  width: 8px;
+  height: 8px;
+  left: calc(-1 * var(--space-6) + 6px);
+  background: #c4c9d4;
+}
+
+.snapshot-changed {
+  border-color: #f5d0a9;
+  background: #fffbf5;
+}
+
+.snapshot-changed::before {
+  background: var(--color-changed);
+}
+
+.snapshot-failed::before {
+  background: var(--color-danger);
+}
+
+.snapshot-incomplete::before {
+  background: var(--color-surface);
+  border: 2px solid var(--color-changed);
+}
+
+.load-older {
+  align-self: center;
 }
 
 .snapshot-head {

@@ -3,6 +3,9 @@ import { Link, useParams } from "react-router";
 
 import { listSnapshots, type PollOutcome, type Snapshot } from "../api";
 import { changeLines, type NoteTone, summaryNote } from "../summaryNote";
+import { timelineTone } from "../timeline";
+
+const PAGE_SIZE = 50;
 
 const dateTime = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "medium" });
 
@@ -24,15 +27,38 @@ const OUTCOME_LABELS: Record<PollOutcome, string | null> = {
 export function CompetitorTimelinePage() {
   const { id = "" } = useParams();
   const [snapshots, setSnapshots] = useState<Snapshot[] | null>(null);
+  const [hasOlder, setHasOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setSnapshots(null);
     setError(null);
-    listSnapshots(id)
-      .then(setSnapshots)
+    listSnapshots(id, PAGE_SIZE)
+      .then((page) => {
+        setSnapshots(page);
+        setHasOlder(page.length === PAGE_SIZE);
+      })
       .catch((err: Error) => setError(err.message));
   }, [id]);
+
+  async function loadOlder() {
+    const oldest = snapshots?.at(-1);
+    if (!oldest) {
+      return;
+    }
+    setLoadingOlder(true);
+    try {
+      const page = await listSnapshots(id, PAGE_SIZE, oldest.id);
+      setSnapshots((loaded) => [...(loaded ?? []), ...page]);
+      setHasOlder(page.length === PAGE_SIZE);
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoadingOlder(false);
+    }
+  }
 
   return (
     <section className="card">
@@ -47,11 +73,16 @@ export function CompetitorTimelinePage() {
         <p className="empty muted">No snapshots yet. The first poll is on its way.</p>
       )}
       {snapshots && snapshots.length > 0 && (
-        <ol className="snapshot-list">
+        <ol className="timeline">
           {snapshots.map((snapshot) => (
             <SnapshotItem key={snapshot.id} snapshot={snapshot} />
           ))}
         </ol>
+      )}
+      {hasOlder && (
+        <button className="button load-older" type="button" onClick={loadOlder} disabled={loadingOlder}>
+          {loadingOlder ? "Loading…" : "Load older snapshots"}
+        </button>
       )}
     </section>
   );
@@ -62,7 +93,7 @@ function SnapshotItem({ snapshot }: { snapshot: Snapshot }) {
   const hasListing = snapshot.outcome === "ok" || snapshot.outcome === "incomplete";
 
   return (
-    <li className={`snapshot snapshot-${snapshot.outcome}`}>
+    <li className={`snapshot snapshot-${timelineTone(snapshot)}`}>
       <div className="snapshot-head">
         <time className="snapshot-time muted" dateTime={snapshot.fetchedAt}>
           {dateTime.format(new Date(snapshot.fetchedAt))}
