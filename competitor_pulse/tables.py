@@ -99,8 +99,13 @@ snapshots = Table(
         "(summary_status IN ('llm_failed', 'llm_unusable')) = (summary_error IS NOT NULL)",
         name="summary_error_iff_llm_error",
     ),
-    # The timeline: one competitor's snapshots, newest first.
-    Index("ix_snapshots_competitor_id_fetched_at", "competitor_id", text("fetched_at DESC")),
+    # The timeline: one competitor's snapshots, newest first, paged by (fetched_at, id).
+    Index(
+        "ix_snapshots_competitor_id_fetched_at_id",
+        "competitor_id",
+        text("fetched_at DESC"),
+        text("id DESC"),
+    ),
     # The LLM worker's queue: only the few rows that wait for a summary.
     Index(
         "ix_snapshots_pending_summary",

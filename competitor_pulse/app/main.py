@@ -8,12 +8,11 @@ from service_kit.api import (
     RequestLogMiddleware,
     bootstrap_logging,
     launch_uvicorn,
-    register_default_error_handler,
-    register_timeout_error_handler,
 )
 from service_kit.logging import log_startup_information, logger
 
 from competitor_pulse.app import competitors, dependencies, health
+from competitor_pulse.app.api_error_handling import register_error_handlers
 from competitor_pulse.configuration import CompetitorPulseConfiguration, load_configuration
 from competitor_pulse.database import Database
 
@@ -41,6 +40,7 @@ async def setup(_app: FastAPI) -> CompetitorPulseConfiguration:
     database = Database.from_configuration(config.database)
     await database.open()
     dependencies._database = database
+    dependencies._api_configuration = config.api
 
     return config
 
@@ -49,14 +49,14 @@ async def teardown(_app: FastAPI, _config: CompetitorPulseConfiguration):
     logger.info(f"Shutting down {PROJECT_NAME}...")
     await dependencies.database().close()
     dependencies._database = None
+    dependencies._api_configuration = None
 
 
 app = FastAPI(lifespan=lifespan, title=PROJECT_NAME, version=API_VERSION)
 
 # Error handlers must be registered before the RequestLogMiddleware, otherwise responses to
 # requests that raise uncaught exceptions are not logged properly.
-register_timeout_error_handler(app)
-register_default_error_handler(app)
+register_error_handlers(app)
 
 # Middlewares run in the reverse order in which they are added.
 app.add_middleware(RequestLogMiddleware)

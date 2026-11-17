@@ -43,6 +43,14 @@ docker compose up -d db
 CP_TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres poetry run pytest
 ```
 
+## Decisions
+
+- **Adding an id the source does not know.** Any valid id is accepted without asking the source.
+  The source answers `404` both for ids it does not know and for competitors that are delisted
+  for now, so a check when adding could not tell them apart; it would also put a slow,
+  rate-limited source in the path of the request. The first poll records `not_found`, and the
+  timeline shows it. A typo is therefore noticed after the first poll, not when it is added.
+
 ## Development setup
 
 Install [pre-commit](https://pre-commit.com) once per machine, then enable the hooks in each clone:

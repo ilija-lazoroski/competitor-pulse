@@ -55,6 +55,35 @@ class DatabaseConfiguration(BaseSettings, ServiceKitBaseModel):
         return self
 
 
+class ApiConfiguration(BaseSettings, ServiceKitBaseModel):
+    """Settings of the competitor API from CP_API_* environment variables."""
+
+    model_config = SettingsConfigDict(
+        env_parse_none_str="None",
+        env_prefix="CP_API_",
+        extra="ignore",
+        hide_input_in_errors=True,
+    )
+
+    recent_change_hours: float = Field(
+        default=24,
+        gt=0,
+        description="A competitor counts as recently changed if its last change is this recent",
+    )
+    snapshots_page_size: int = Field(
+        default=50, ge=1, description="Snapshots per page when the request gives no limit"
+    )
+    snapshots_max_page_size: int = Field(
+        default=200, ge=1, description="Most snapshots a request may ask for (limit)"
+    )
+
+    @model_validator(mode="after")
+    def _page_size_is_not_above_max_page_size(self) -> Self:
+        if self.snapshots_page_size > self.snapshots_max_page_size:
+            raise ValueError("snapshots_page_size must not be larger than snapshots_max_page_size")
+        return self
+
+
 class CompetitorPulseConfiguration(ServiceConfiguration):
     """Settings come from CP_* environment variables or the .env file at CP_CONFIG_PATH."""
 
@@ -66,6 +95,7 @@ class CompetitorPulseConfiguration(ServiceConfiguration):
     )
 
     database: DatabaseConfiguration = Field(description="The PostgreSQL settings")
+    api: ApiConfiguration = Field(description="The competitor API settings")
 
 
 def load_configuration() -> CompetitorPulseConfiguration:
@@ -75,6 +105,7 @@ def load_configuration() -> CompetitorPulseConfiguration:
     logger.info(f"Loading configuration - config file: {config_file_path}")
 
     database = DatabaseConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
+    api = ApiConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
     return CompetitorPulseConfiguration(
-        _env_file=config_file_path, database=database  # type: ignore[call-arg]
+        _env_file=config_file_path, database=database, api=api  # type: ignore[call-arg]
     )

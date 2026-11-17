@@ -87,3 +87,10 @@ def test_database_timeout_must_be_positive(monkeypatch: pytest.MonkeyPatch, fiel
 
     with pytest.raises(ValidationError, match=field):
         load_configuration()
+
+
+def test_page_size_above_max_page_size_is_rejected(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("CP_API_SNAPSHOTS_PAGE_SIZE", "300")
+
+    with pytest.raises(ValidationError, match="snapshots_page_size"):
+        load_configuration()

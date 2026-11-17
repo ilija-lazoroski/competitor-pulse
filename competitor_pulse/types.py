@@ -5,12 +5,17 @@ The enums are stored as native PostgreSQL enums; Changes is stored in snapshots.
 
 from decimal import Decimal
 from enum import StrEnum
-from typing import Annotated, Final
+from typing import Annotated, Final, TypeAlias
 
-from pydantic import Field, TypeAdapter
+from pydantic import Field, StringConstraints, TypeAdapter
 from service_kit import ServiceKitBaseModel
 
 CURRENCY_PATTERN: Final = r"^[A-Z]{3}$"
+COMPETITOR_ID_PATTERN: Final = r"^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$"
+
+# Lowercase slugs like "acme-crm". The id goes into the source URL (/listings/{id}), so
+# slashes, dots and other path characters must never get through.
+CompetitorId: TypeAlias = Annotated[str, StringConstraints(pattern=COMPETITOR_ID_PATTERN)]
 
 
 class PollOutcome(StrEnum):

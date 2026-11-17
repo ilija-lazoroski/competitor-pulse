@@ -1,4 +1,4 @@
-"""Errors stored with a snapshot.
+"""The application's errors, and the error records stored with a snapshot.
 
 Each record has the shape of a service-kit StructuredError's `structured_error` (a `message`
 plus the error's fields), so the exceptions the source and LLM clients raise can be stored
@@ -8,9 +8,13 @@ with `poll_error_adapter.validate_python(err.structured_error)`.
 from typing import Annotated, Final, Literal
 
 from pydantic import Field, TypeAdapter
-from service_kit import ServiceKitBaseModel
+from service_kit import ServiceKitBaseModel, StructuredError
 
 from competitor_pulse.types import ListingField
+
+
+class CompetitorPulseError(StructuredError):
+    """Base class for all errors in the application."""
 
 
 class ErrorRecord(ServiceKitBaseModel):

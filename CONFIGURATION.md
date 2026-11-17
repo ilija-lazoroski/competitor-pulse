@@ -114,4 +114,22 @@ How long the database check (/health/db) waits for an answer
 *Optional*, default value: `300`
 
 How long the pool keeps retrying in the background when the database cannot be reached, before it reports the failure and starts over
+
+## `CP_API_RECENT_CHANGE_HOURS`
+
+*Optional*, default value: `24`
+
+A competitor counts as recently changed if its last change is this recent
+
+## `CP_API_SNAPSHOTS_PAGE_SIZE`
+
+*Optional*, default value: `50`
+
+Snapshots per page when the request gives no limit
+
+## `CP_API_SNAPSHOTS_MAX_PAGE_SIZE`
+
+*Optional*, default value: `200`
+
+Most snapshots a request may ask for (limit)
 <!-- options-end -->

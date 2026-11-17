@@ -37,14 +37,25 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
   - `GET /health/db`: runs `SELECT 1`; `200 {"status": "ok"}`, or
   `503 {"status": "unavailable"}` if the database does not answer
   within `CP_DATABASE_PING_TIMEOUT_SECONDS`.
-  - Stubs of the competitor API that answer `501 Not Implemented` for now:
-  - `GET /api/competitors`: list tracked competitors.
-  - `POST /api/competitors` with `{"id": string}`: start tracking a
-  competitor (`201 Created` once implemented).
-  - `DELETE /api/competitors/{id}`: stop tracking a competitor
-  (`204 No Content` once implemented).
-  - `GET /api/competitors/{id}/snapshots`: a competitor's snapshots,
-  newest first.
+  - `GET /api/competitors`: the tracked competitors, with `createdAt`,
+  `lastChangedAt` and `changedRecently` (a change within
+  `CP_API_RECENT_CHANGE_HOURS`).
+  - `POST /api/competitors` with `{"id": string}`: start tracking;
+  `201 Created`, `409 Conflict` if already tracked. The id is not checked
+  with the source: the first poll shows whether the source knows it. A
+  removed competitor is tracked again with its history.
+  - `DELETE /api/competitors/{id}`: stop tracking and keep the history;
+  `204 No Content`, `404 Not Found` if not tracked.
+  - `GET /api/competitors/{id}/snapshots`: newest first, paged with
+  `?limit=` and `?before=<snapshot id>`; `404 Not Found` if not tracked.
+  Each snapshot has the brief's fields (price formatted as `$29/mo`)
+  plus `id`, `outcome`, `error`, `summaryStatus` and `summaryError`.
+  - Competitor ids must be lowercase slugs (`a-z`, `0-9`, inner `-`, at
+  most 64 characters), in the body and in the path; otherwise `422`.
+- API settings: `CP_API_RECENT_CHANGE_HOURS` (default `24`),
+  `CP_API_SNAPSHOTS_PAGE_SIZE` (default `50`) and
+  `CP_API_SNAPSHOTS_MAX_PAGE_SIZE` (default `200`).
+- Migration: the timeline index also covers `id`, for keyset paging.
 
 ### Changed
 ### Fixed

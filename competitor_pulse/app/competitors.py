@@ -1,62 +1,67 @@
-"""The competitor API from the brief. The endpoints are stubs that answer 501 for now."""
+"""The competitor API from the brief. Each endpoint makes one repository call."""
 
-from datetime import datetime
 from http import HTTPStatus
-from typing import Annotated, NoReturn
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Path
-from pydantic import Field
-from service_kit import ServiceKitBaseModel
+from fastapi import APIRouter, Depends, Query
+from service_kit.api import get_standard_responses
+
+from competitor_pulse.app.dependencies import competitor_repository
+from competitor_pulse.competitor_repository import CompetitorRepository
+from competitor_pulse.models import ApiModel, Competitor, Snapshot
+from competitor_pulse.types import CompetitorId
 
 router = APIRouter(prefix="/api/competitors", tags=["competitors"])
 
-# Lowercase slugs like "acme-crm". The id goes into the source URL (/listings/{id}), so
-# slashes, dots and other path characters must never get through.
-COMPETITOR_ID_PATTERN = r"^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$"
-
-CompetitorId = Annotated[str, Field(pattern=COMPETITOR_ID_PATTERN, examples=["acme-crm"])]
-CompetitorIdPath = Annotated[str, Path(pattern=COMPETITOR_ID_PATTERN, examples=["acme-crm"])]
+Repository = Annotated[CompetitorRepository, Depends(competitor_repository)]
 
 
-class Competitor(ServiceKitBaseModel):
+class CompetitorCreate(ApiModel):
     id: CompetitorId
-
-
-class CompetitorCreate(ServiceKitBaseModel):
-    id: CompetitorId
-
-
-class Snapshot(ServiceKitBaseModel):
-    fetchedAt: datetime
-    title: str | None
-    tagline: str | None
-    price: str | None
-    description: str | None
-    changed: bool = Field(description="Differs in a way that matters from the previous snapshot")
-    summary: str | None = Field(description="Plain-English summary of the change, if available")
-
-
-def _not_implemented() -> NoReturn:
-    raise HTTPException(HTTPStatus.NOT_IMPLEMENTED, "Not implemented yet")
 
 
 @router.get("", summary="List tracked competitors")
-async def list_competitors() -> list[Competitor]:
-    _not_implemented()
+async def list_competitors(repository: Repository) -> list[Competitor]:
+    return await repository.list_tracked()
 
 
-@router.post("", status_code=HTTPStatus.CREATED, summary="Start tracking a competitor")
-async def add_competitor(body: CompetitorCreate) -> Competitor:
-    _not_implemented()
+@router.post(
+    "",
+    status_code=HTTPStatus.CREATED,
+    summary="Start tracking a competitor",
+    responses=get_standard_responses([HTTPStatus.CONFLICT]),
+)
+async def add_competitor(body: CompetitorCreate, repository: Repository) -> CompetitorCreate:
+    """The id is not checked with the source: the first poll shows whether the source knows it.
+
+    A competitor that was removed is tracked again, with its history.
+    """
+    await repository.add(body.id)
+    return body
 
 
 @router.delete(
-    "/{competitor_id}", status_code=HTTPStatus.NO_CONTENT, summary="Stop tracking a competitor"
+    "/{competitor_id}",
+    status_code=HTTPStatus.NO_CONTENT,
+    summary="Stop tracking a competitor",
+    responses=get_standard_responses([HTTPStatus.NOT_FOUND]),
 )
-async def remove_competitor(competitor_id: CompetitorIdPath) -> None:
-    _not_implemented()
+async def remove_competitor(competitor_id: CompetitorId, repository: Repository) -> None:
+    """Polling stops; the history is kept until it is older than the retention period."""
+    await repository.remove(competitor_id)
 
 
-@router.get("/{competitor_id}/snapshots", summary="A competitor's snapshots, newest first")
-async def list_snapshots(competitor_id: CompetitorIdPath) -> list[Snapshot]:
-    _not_implemented()
+@router.get(
+    "/{competitor_id}/snapshots",
+    summary="A competitor's snapshots, newest first",
+    responses=get_standard_responses([HTTPStatus.NOT_FOUND]),
+)
+async def list_snapshots(
+    competitor_id: CompetitorId,
+    repository: Repository,
+    limit: Annotated[int | None, Query(ge=1, description="Page size")] = None,
+    before: Annotated[
+        int | None, Query(ge=1, description="Only snapshots older than this snapshot id")
+    ] = None,
+) -> list[Snapshot]:
+    return await repository.list_snapshots(competitor_id, limit, before)

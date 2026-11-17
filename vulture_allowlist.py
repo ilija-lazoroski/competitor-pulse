@@ -1,31 +1,39 @@
 from competitor_pulse.app.competitors import (
-    Competitor,
     CompetitorCreate,
-    Snapshot,
     add_competitor,
     list_competitors,
     list_snapshots,
     remove_competitor,
 )
 from competitor_pulse.app.health import HealthResponse, UnavailableResponse, health_db
-from competitor_pulse.configuration import CompetitorPulseConfiguration, DatabaseConfiguration
+from competitor_pulse.configuration import (
+    ApiConfiguration,
+    CompetitorPulseConfiguration,
+    DatabaseConfiguration,
+)
 from competitor_pulse.database import to_sqlalchemy_url
+from competitor_pulse.models import Competitor, Snapshot
 
 # Pydantic fields, settings and validators are read by Pydantic/FastAPI, not by our code.
 Competitor.id
 CompetitorCreate.id
-Snapshot.fetchedAt
+Competitor.changed_recently
+Snapshot.fetched_at
 Snapshot.title
 Snapshot.tagline
 Snapshot.price
 Snapshot.description
 Snapshot.changed
 Snapshot.summary
+Snapshot.outcome
+Snapshot.summary_status
 HealthResponse.status
 UnavailableResponse.status
 CompetitorPulseConfiguration.model_config
 DatabaseConfiguration.model_config
 DatabaseConfiguration._max_size_is_not_below_min_size
+ApiConfiguration.model_config
+ApiConfiguration._page_size_is_not_above_max_page_size
 
 # Route functions are called by FastAPI.
 list_competitors
@@ -34,9 +42,10 @@ remove_competitor
 list_snapshots
 health_db
 
-# Stub endpoints: the parameters are used once the endpoints are implemented.
-_.body  # type: ignore[name-defined]  # noqa: F821
-_.competitor_id  # type: ignore[name-defined]  # noqa: F821
+# Exception handlers are called by FastAPI.
+_.competitor_not_tracked_handler  # type: ignore[name-defined]  # noqa: F821
+_.competitor_already_tracked_handler  # type: ignore[name-defined]  # noqa: F821
+_.invalid_page_size_handler  # type: ignore[name-defined]  # noqa: F821
 
 # Used by migrations/env.py, which vulture does not scan.
 to_sqlalchemy_url
