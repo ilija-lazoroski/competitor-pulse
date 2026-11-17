@@ -1,0 +1,114 @@
+name: competitor-pulse
+
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs: [/tmp]
+
+x-backend: &backend
+  <<: *hardening
+  build:
+    context: .
+  image: competitor-pulse:local
+  env_file:
+    - path: .env
+      required: false
+  environment: &backend-environment
+    CP_DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-competitor_pulse}
+    CP_PRETTY_PRINT_LOGS: "false"
+
+services:
+  db:
+    image: postgres:17.11-alpine@sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-competitor_pulse}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      start_interval: 1s
+      retries: 5
+
+  # One-shot: brings the schema up to date, then exits. The API waits for it.
+  migrate:
+    <<: *backend
+    entrypoint: ["alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    <<: *backend
+    environment:
+      <<: *backend-environment
+      CP_BIND_ADDRESS: 0.0.0.0
+      CP_PORT: 8080
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      start_interval: 1s
+      retries: 3
+
+  # Provided by the assignment (assets/files/listing-source), run as is.
+  listing-source:
+    <<: *hardening
+    image: node:24.22.1-trixie-slim@sha256:43b9ba1142b8dcf33fa8f922ca1be85714adc444e0586c7cf7726daaeabc1bea
+    user: node
+    working_dir: /srv
+    command: ["node", "listing-source-server.mjs"]
+    environment:
+      PORT: 4002
+    volumes:
+      - ./assets/files/listing-source:/srv:ro
+    ports:
+      - "127.0.0.1:4002:4002"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:4002/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      start_interval: 1s
+      retries: 3
+
+  # Provided by the assignment (assets/files/mock-llm), run as is.
+  mock-llm:
+    <<: *hardening
+    image: python:3.14.9-slim-trixie@sha256:35caba83af2fe6da9a5d922f9b0156f21d1246a48278c58a08bd253303ba42e8
+    user: "65534:65534"
+    working_dir: /srv
+    command: ["python", "mock-llm-server.py"]
+    environment:
+      PORT: 4001
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ./assets/files/mock-llm:/srv:ro
+    ports:
+      - "127.0.0.1:4001:4001"
+
+volumes:
+  db-data:

@@ -1,0 +1,10 @@
+# Allowlist: only what the image needs. Everything else (.env, .venv, tests, assets,
+# caches, git data) stays out of the build context.
+*
+!pyproject.toml
+!poetry.lock
+!README.md
+!CHANGELOG.md
+!competitor_pulse/
+!migrations/
+**/__pycache__
