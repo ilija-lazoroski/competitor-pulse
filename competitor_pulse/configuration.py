@@ -107,6 +107,45 @@ class SourceConfiguration(BaseSettings, ServiceKitBaseModel):
     )
 
 
+class PollerConfiguration(BaseSettings, ServiceKitBaseModel):
+    """Settings of the poller from CP_POLLER_* environment variables."""
+
+    model_config = SettingsConfigDict(
+        env_parse_none_str="None",
+        env_prefix="CP_POLLER_",
+        extra="ignore",
+        hide_input_in_errors=True,
+    )
+
+    interval_seconds: float = Field(
+        default=900,
+        gt=0,
+        description=(
+            "How often each competitor is polled; when the request budget is too small for this,"
+            " every competitor falls behind evenly"
+        ),
+    )
+    requests_per_second: float = Field(
+        default=4,
+        gt=0,
+        description="Most requests per second to the source, for all competitors together",
+    )
+    max_in_flight: int = Field(
+        default=50, ge=1, description="Most requests to the source waiting for an answer at once"
+    )
+    claim_batch_size: int = Field(
+        default=10, ge=1, description="How many due competitors the poller takes at a time"
+    )
+    idle_seconds: float = Field(
+        default=1, gt=0, description="How long the poller waits when no competitor is due"
+    )
+    rate_limited_pause_seconds: float = Field(
+        default=1,
+        gt=0,
+        description="How long to pause all requests after a 429 without a usable Retry-After",
+    )
+
+
 class CompetitorPulseConfiguration(ServiceConfiguration):
     """Settings come from CP_* environment variables or the .env file at CP_CONFIG_PATH."""
 
@@ -120,12 +159,14 @@ class CompetitorPulseConfiguration(ServiceConfiguration):
     database: DatabaseConfiguration = Field(description="The PostgreSQL settings")
     api: ApiConfiguration = Field(description="The competitor API settings")
     source: SourceConfiguration = Field(description="The listing source settings")
+    poller: PollerConfiguration = Field(description="The poller settings")
 
 
 def load_configuration() -> CompetitorPulseConfiguration:
     """Loads the settings from CP_* environment variables and the .env file at CP_CONFIG_PATH.
 
-    :returns: The settings, with the database, API and source settings as sub-configurations
+    :returns: The settings, with the database, API, source and poller settings as
+              sub-configurations
     :raises ValidationError: If a setting is missing or invalid
     """
     config_file_path = None
@@ -136,9 +177,11 @@ def load_configuration() -> CompetitorPulseConfiguration:
     database = DatabaseConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
     api = ApiConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
     source = SourceConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
+    poller = PollerConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
     return CompetitorPulseConfiguration(
         _env_file=config_file_path,
         database=database,
         api=api,
-        source=source,  # type: ignore[call-arg]
+        source=source,
+        poller=poller,  # type: ignore[call-arg]
     )

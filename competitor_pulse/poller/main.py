@@ -1,0 +1,49 @@
+import asyncio
+import signal
+
+from service_kit.logging import configure_logger, logger
+
+from competitor_pulse.configuration import load_configuration
+from competitor_pulse.database import Database
+from competitor_pulse.listing_source import HttpListingSource
+from competitor_pulse.poll_repository import PostgresPollRepository
+from competitor_pulse.poller.poller import Poller
+from competitor_pulse.poller.rate_limiter import RateLimiter
+
+
+async def run() -> None:
+    """Loads the configuration, then polls until SIGTERM or SIGINT, and closes everything.
+
+    :raises ValidationError: If a setting is missing or invalid
+    """
+    config = load_configuration()
+    configure_logger(config.log_level, config.log_directory, config.pretty_print_logs)
+    logger.info("Poller configuration", config=config)
+
+    database = Database.from_configuration(config.database)
+    source = HttpListingSource.from_configuration(config.source)
+    poller = Poller(
+        PostgresPollRepository(database.engine),
+        source,
+        RateLimiter(config.poller.requests_per_second),
+        config.poller,
+    )
+
+    current = asyncio.current_task()
+    loop = asyncio.get_running_loop()
+    for stop_signal in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(stop_signal, current.cancel)  # type: ignore[union-attr]
+
+    await database.open()
+    try:
+        await poller.run()
+    except asyncio.CancelledError:
+        logger.info("Poller stopping")
+    finally:
+        await source.close()
+        await database.close()
+
+
+def main():
+    """Starts the poller; it runs until it receives SIGTERM or SIGINT."""
+    asyncio.run(run())

@@ -1,0 +1,2 @@
+from competitor_pulse.poll_repository.poll_repository import PollRepository
+from competitor_pulse.poll_repository.postgres_poll_repository import PostgresPollRepository

@@ -13,10 +13,8 @@ from competitor_pulse.competitor_repository.errors import (
 from competitor_pulse.configuration import ApiConfiguration
 from competitor_pulse.formatting import format_price
 from competitor_pulse.models import Competitor, Snapshot
-from competitor_pulse.tables import competitors, snapshots
+from competitor_pulse.tables import competitors, is_tracked, snapshots
 from competitor_pulse.types import CompetitorId, Price
-
-_tracked = competitors.c.removed_at.is_(None)
 
 
 class PostgresCompetitorRepository(CompetitorRepository):
@@ -40,7 +38,7 @@ class PostgresCompetitorRepository(CompetitorRepository):
                 competitors.c.last_changed_at,
                 changed_recently.label("changed_recently"),
             )
-            .where(_tracked)
+            .where(is_tracked)
             .order_by(competitors.c.id)
         )
         async with self._engine.connect() as connection:
@@ -61,7 +59,7 @@ class PostgresCompetitorRepository(CompetitorRepository):
             restored = await connection.execute(
                 competitors.update()
                 .where(competitors.c.id == competitor_id, competitors.c.removed_at.is_not(None))
-                .values(removed_at=None)
+                .values(removed_at=None, next_poll_at=func.now())
                 .returning(competitors.c.id)
             )
             if not restored.first():
@@ -71,7 +69,7 @@ class PostgresCompetitorRepository(CompetitorRepository):
         async with self._engine.begin() as connection:
             removed = await connection.execute(
                 competitors.update()
-                .where(competitors.c.id == competitor_id, _tracked)
+                .where(competitors.c.id == competitor_id, is_tracked)
                 .values(removed_at=func.now())
                 .returning(competitors.c.id)
             )
@@ -120,7 +118,7 @@ class PostgresCompetitorRepository(CompetitorRepository):
         """
         tracked = await connection.execute(
             select(competitors.c.id)
-            .where(competitors.c.id == competitor_id, _tracked)
+            .where(competitors.c.id == competitor_id, is_tracked)
             .with_for_update(read=True)
         )
         if not tracked.first():

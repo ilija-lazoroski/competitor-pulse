@@ -144,4 +144,40 @@ Where the listing source runs; listings come from <base_url>/listings/<id>
 *Optional*, default value: `10`
 
 How long one request to the source may take, from connecting to the last byte
+
+## `CP_POLLER_INTERVAL_SECONDS`
+
+*Optional*, default value: `900`
+
+How often each competitor is polled; when the request budget is too small for this, every competitor falls behind evenly
+
+## `CP_POLLER_REQUESTS_PER_SECOND`
+
+*Optional*, default value: `4`
+
+Most requests per second to the source, for all competitors together
+
+## `CP_POLLER_MAX_IN_FLIGHT`
+
+*Optional*, default value: `50`
+
+Most requests to the source waiting for an answer at once
+
+## `CP_POLLER_CLAIM_BATCH_SIZE`
+
+*Optional*, default value: `10`
+
+How many due competitors the poller takes at a time
+
+## `CP_POLLER_IDLE_SECONDS`
+
+*Optional*, default value: `1`
+
+How long the poller waits when no competitor is due
+
+## `CP_POLLER_RATE_LIMITED_PAUSE_SECONDS`
+
+*Optional*, default value: `1`
+
+How long to pause all requests after a 429 without a usable Retry-After
 <!-- options-end -->

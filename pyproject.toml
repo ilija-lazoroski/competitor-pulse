@@ -22,6 +22,7 @@ version = "v0.1.0"
 
 [project.scripts]
 competitor_pulse = "competitor_pulse.app.main:main"
+competitor_pulse_poller = "competitor_pulse.poller.main:main"
 
 [tool.setuptools.dynamic]
 readme = {file = ["README.md"]}

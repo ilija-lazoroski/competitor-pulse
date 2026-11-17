@@ -68,6 +68,19 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 - Source settings: `CP_SOURCE_BASE_URL` (default `http://localhost:4002`;
   `http://listing-source:4002` in Docker Compose) and
   `CP_SOURCE_TIMEOUT_SECONDS` (default `10`).
+- Poller (`competitor_pulse_poller`, the `poller` service in Docker Compose):
+  a separate process that polls every tracked competitor, most overdue
+  first, and stores each poll as a snapshot (`ok`, `incomplete`,
+  `not_found` or `failed`). One shared rate limiter spaces all requests;
+  a 429 pauses every request for `Retry-After` and puts the competitor back
+  in the queue without storing it. Failed polls are not retried early.
+- Poller settings: `CP_POLLER_INTERVAL_SECONDS` (default `900`),
+  `CP_POLLER_REQUESTS_PER_SECOND` (`4`), `CP_POLLER_MAX_IN_FLIGHT` (`50`),
+  `CP_POLLER_CLAIM_BATCH_SIZE` (`10`), `CP_POLLER_IDLE_SECONDS` (`1`) and
+  `CP_POLLER_RATE_LIMITED_PAUSE_SECONDS` (`1`).
+- Migration: `competitors.next_poll_at`, the poll schedule. Adding or
+  restoring a competitor makes it due at once; claiming moves it one
+  interval ahead (`FOR UPDATE SKIP LOCKED`).
 
 ### Changed
 ### Fixed

@@ -67,8 +67,18 @@ competitors = Table(
     Column("removed_at", DateTime(timezone=True)),
     # Copied from the newest changed snapshot, so the list shows recent changes cheaply.
     Column("last_changed_at", DateTime(timezone=True)),
+    Column("next_poll_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
+    # Partial: the poller only looks for tracked competitors that are due.
+    Index(
+        "ix_competitors_next_poll_at",
+        "next_poll_at",
+        postgresql_where=text("removed_at IS NULL"),
+    ),
 )
 
+
+# A competitor is tracked until the user removes it.
+is_tracked: Final = competitors.c.removed_at.is_(None)
 
 snapshots = Table(
     "snapshots",
