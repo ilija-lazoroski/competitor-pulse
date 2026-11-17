@@ -1,5 +1,22 @@
 # Competitor Pulse
 
+## Configuration
+
+Configure the backend before anything else: it does not start until its required settings are
+set. Settings come from `CP_*` environment variables, or from a `.env` file whose path is in
+`CP_CONFIG_PATH`.
+
+All options, with their defaults and which ones are required, are listed in
+[CONFIGURATION.md](CONFIGURATION.md).
+```
+
+Or start from the example file, which has the local development values:
+
+```bash
+cp .env.example .env
+export CP_CONFIG_PATH=.env
+```
+
 ## Development setup
 
 Install [pre-commit](https://pre-commit.com) once per machine, then enable the hooks in each clone:
