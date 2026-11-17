@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 
 import { listSnapshots, type PollOutcome, type Snapshot } from "../api";
 import { changeLines, type NoteTone, summaryNote } from "../summaryNote";
-import { timelineTone } from "../timeline";
+import { firstPage, type LoadedTimeline, mergeNewestPage, timelineTone } from "../timeline";
+import { useAutoRefresh } from "../useAutoRefresh";
 
 const PAGE_SIZE = 50;
 
@@ -26,21 +27,46 @@ const OUTCOME_LABELS: Record<PollOutcome, string | null> = {
 
 export function CompetitorTimelinePage() {
   const { id = "" } = useParams();
-  const [snapshots, setSnapshots] = useState<Snapshot[] | null>(null);
-  const [hasOlder, setHasOlder] = useState(false);
+  // One state for the snapshots and whether there are older ones, so a refresh and loading an
+  // older page, which can finish in any order, both update it from its latest value.
+  const [timeline, setTimeline] = useState<LoadedTimeline | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const snapshots = timeline?.snapshots ?? null;
+
+  // The competitor shown now: an answer for another one, after moving on, is dropped.
+  const shownId = useRef(id);
+  useEffect(() => {
+    shownId.current = id;
+  }, [id]);
 
   useEffect(() => {
-    setSnapshots(null);
+    let current = true;
+    setTimeline(null);
     setError(null);
     listSnapshots(id, PAGE_SIZE)
-      .then((page) => {
-        setSnapshots(page);
-        setHasOlder(page.length === PAGE_SIZE);
-      })
-      .catch((err: Error) => setError(err.message));
+      .then((page) => current && setTimeline(firstPage(page, PAGE_SIZE)))
+      .catch((err: Error) => current && setError(err.message));
+    return () => {
+      current = false;
+    };
   }, [id]);
+
+  // Loads the newest page again: new polls go on top and pending summaries get filled in.
+  const refresh = useCallback(async () => {
+    try {
+      const newest = await listSnapshots(id, PAGE_SIZE);
+      if (shownId.current === id) {
+        setTimeline((loaded) => mergeNewestPage(loaded, newest, PAGE_SIZE));
+        setError(null);
+      }
+    } catch (err) {
+      if (shownId.current === id) {
+        setError((err as Error).message);
+      }
+    }
+  }, [id]);
+  useAutoRefresh(refresh);
 
   async function loadOlder() {
     const oldest = snapshots?.at(-1);
@@ -50,9 +76,13 @@ export function CompetitorTimelinePage() {
     setLoadingOlder(true);
     try {
       const page = await listSnapshots(id, PAGE_SIZE, oldest.id);
-      setSnapshots((loaded) => [...(loaded ?? []), ...page]);
-      setHasOlder(page.length === PAGE_SIZE);
-      setError(null);
+      if (shownId.current === id) {
+        setTimeline((loaded) => ({
+          snapshots: [...(loaded?.snapshots ?? []), ...page],
+          hasOlder: page.length === PAGE_SIZE,
+        }));
+        setError(null);
+      }
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -79,7 +109,7 @@ export function CompetitorTimelinePage() {
           ))}
         </ol>
       )}
-      {hasOlder && (
+      {timeline?.hasOlder && (
         <button className="button load-older" type="button" onClick={loadOlder} disabled={loadingOlder}>
           {loadingOlder ? "Loading…" : "Load older snapshots"}
         </button>

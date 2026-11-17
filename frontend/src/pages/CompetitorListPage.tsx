@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import { addCompetitor, type Competitor, listCompetitors, removeCompetitor } from "../api";
+import { useAutoRefresh } from "../useAutoRefresh";
 
 // The same rule as the API's: lowercase letters, digits and inner dashes, at most 64 characters.
 const COMPETITOR_ID = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
@@ -12,16 +13,22 @@ export function CompetitorListPage() {
   const [competitors, setCompetitors] = useState<Competitor[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const load = useCallback(() => {
-    listCompetitors()
-      .then((loaded) => {
-        setCompetitors(loaded);
-        setLoadError(null);
-      })
-      .catch((err: Error) => setLoadError(err.message));
-  }, []);
+  // A failed load keeps the list already shown, under the error.
+  const load = useCallback(
+    () =>
+      listCompetitors()
+        .then((loaded) => {
+          setCompetitors(loaded);
+          setLoadError(null);
+        })
+        .catch((err: Error) => setLoadError(err.message)),
+    [],
+  );
 
-  useEffect(load, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  useAutoRefresh(load);
 
   return (
     <section className="card">

@@ -153,6 +153,9 @@ npm run dev     # http://localhost:5173
 npm test
 ```
 
+Both views ask the API again every 15 seconds while the tab is visible, so new polls, and summaries
+that were still pending, appear without a reload.
+
 ## Tests
 
 ```bash
