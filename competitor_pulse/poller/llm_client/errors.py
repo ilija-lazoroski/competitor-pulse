@@ -4,7 +4,13 @@ Each error's structured_error has the fields of its record in competitor_pulse.e
 summarizer can store it with summary_error_adapter.validate_python(err.structured_error).
 """
 
+from http import HTTPStatus
+from typing import Final
+
 from competitor_pulse.errors import CompetitorPulseError
+
+# Besides server errors (5xx), the statuses where the same request can succeed later.
+_RETRYABLE_STATUSES: Final = frozenset({HTTPStatus.REQUEST_TIMEOUT, HTTPStatus.TOO_MANY_REQUESTS})
 
 
 class LlmError(CompetitorPulseError):
@@ -23,7 +29,7 @@ class LlmTimeoutError(LlmError):
 
 
 class LlmConnectionError(LlmError):
-    """The connection to the LLM failed or was dropped."""
+    """The request to the LLM failed without an answer: connection, protocol or decoding."""
 
     def __init__(self, reason: str):
         super().__init__(f"Could not reach the LLM: {reason}", kind="connection")
@@ -34,6 +40,8 @@ class LlmHttpError(LlmError):
 
     def __init__(self, status: int):
         super().__init__(f"The LLM answered with HTTP {status}", kind="http_status", status=status)
+        # Not part of structured_error: it is not stored, it only decides about another attempt.
+        self.retryable = status >= HTTPStatus.INTERNAL_SERVER_ERROR or status in _RETRYABLE_STATUSES
 
 
 class LlmUnusableAnswerError(LlmError):

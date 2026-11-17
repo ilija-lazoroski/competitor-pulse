@@ -5,7 +5,12 @@ from service_kit.logging import logger
 from competitor_pulse.configuration import LlmConfiguration
 from competitor_pulse.errors import summary_error_adapter
 from competitor_pulse.models import PendingSummary
-from competitor_pulse.poller.llm_client import LlmClient, LlmError, LlmUnusableAnswerError
+from competitor_pulse.poller.llm_client import (
+    LlmClient,
+    LlmError,
+    LlmHttpError,
+    LlmUnusableAnswerError,
+)
 from competitor_pulse.poller.summary_prompt import INSTRUCTIONS, build_prompt
 from competitor_pulse.poller.summary_repository import SummaryRepository
 
@@ -40,8 +45,9 @@ class Summarizer:
     async def summarize(self, change: PendingSummary) -> None:
         """Gets one change's summary from the LLM and stores it, or why there is none.
 
-        Every attempt counts against the daily cap. Unusable answers are not retried; other
-        failures are, up to the configured number of attempts. When the cap is reached, every
+        Every attempt counts against the daily cap. Unusable answers and HTTP errors that would
+        fail the same way again (4xx other than 408 and 429) are not retried; other failures
+        are, up to the configured number of attempts. When the cap is reached, every
         change still waiting is marked as over the cap.
 
         :param change: The change to summarize
@@ -60,7 +66,9 @@ class Summarizer:
                 await self._store_failure(change, err, unusable=True)
                 return
             except LlmError as err:
-                if attempt == self._config.max_attempts:
+                # A 4xx like a wrong key or an unknown model fails the same way every time.
+                retryable = not isinstance(err, LlmHttpError) or err.retryable
+                if not retryable or attempt == self._config.max_attempts:
                     await self._store_failure(change, err, unusable=False)
                     return
                 logger.info("LLM call failed; trying again", attempt=attempt, error=err.message)

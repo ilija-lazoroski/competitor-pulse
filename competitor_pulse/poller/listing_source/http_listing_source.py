@@ -48,14 +48,15 @@ class HttpListingSource(ListingSource):
         :raises SourceRateLimitedError: If the source rate limits the request
         :raises SourceHttpError: If the source answers with another unexpected status
         :raises SourceTimeoutError: If the source does not answer in time
-        :raises SourceConnectionError: If the source cannot be reached
+        :raises SourceConnectionError: If the source cannot be reached or the request fails
         :raises SourceInvalidBodyError: If the source answers 200 without a JSON object
         """
         try:
             response = await self._client.get(f"/listings/{competitor_id}")
         except httpx.TimeoutException as err:
             raise SourceTimeoutError(self._timeout_seconds) from err
-        except httpx.TransportError as err:
+        except httpx.RequestError as err:
+            # Every other way the request can fail (connection, protocol, decoding, ...).
             raise SourceConnectionError(str(err) or type(err).__name__) from err
 
         match response.status_code:

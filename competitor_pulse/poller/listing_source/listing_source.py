@@ -17,7 +17,7 @@ class ListingSource(Protocol):
         :raises SourceRateLimitedError: If the source rate limits the request
         :raises SourceHttpError: If the source answers with another unexpected status
         :raises SourceTimeoutError: If the source does not answer in time
-        :raises SourceConnectionError: If the source cannot be reached
+        :raises SourceConnectionError: If the source cannot be reached or the request fails
         :raises SourceInvalidBodyError: If the source answers 200 without a JSON object
         """
         ...

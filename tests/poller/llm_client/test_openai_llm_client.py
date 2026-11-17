@@ -87,9 +87,17 @@ async def test_timeout():
     assert err.value.after_seconds == TIMEOUT_SECONDS
 
 
-async def test_connection_error():
+@pytest.mark.parametrize(
+    "error",
+    [
+        httpx.ConnectError("connection refused"),
+        httpx.RemoteProtocolError("connection closed"),
+        httpx.DecodingError("invalid gzip data"),
+    ],
+)
+async def test_connection_error(error: Exception):
     with pytest.raises(LlmConnectionError):
-        await fail_with(httpx.ConnectError("connection refused")).complete("", "")
+        await fail_with(error).complete("", "")
 
 
 @pytest.mark.parametrize(

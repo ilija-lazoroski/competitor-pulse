@@ -78,7 +78,7 @@ class OpenAiLlmClient(LlmClient):
         :param prompt: The text to answer, sent as the user message
         :returns: The answer, without surrounding whitespace
         :raises LlmTimeoutError: If the LLM does not answer in time
-        :raises LlmConnectionError: If the LLM cannot be reached
+        :raises LlmConnectionError: If the LLM cannot be reached or the request fails
         :raises LlmHttpError: If the LLM answers with an HTTP error status
         :raises LlmUnusableAnswerError: If the answer is missing, empty, cut off, too long, or
                                         not one plain-text paragraph
@@ -97,7 +97,8 @@ class OpenAiLlmClient(LlmClient):
             response = await self._client.post("chat/completions", json=request)
         except httpx.TimeoutException as err:
             raise LlmTimeoutError(self._timeout_seconds) from err
-        except httpx.TransportError as err:
+        except httpx.RequestError as err:
+            # Every other way the request can fail (connection, protocol, decoding, ...).
             raise LlmConnectionError(str(err) or type(err).__name__) from err
 
         if response.status_code != HTTPStatus.OK:

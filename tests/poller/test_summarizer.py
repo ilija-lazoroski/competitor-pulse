@@ -4,7 +4,7 @@ from contextlib import suppress
 import pytest
 
 from competitor_pulse.configuration import LlmConfiguration
-from competitor_pulse.errors import SummaryTimeout, SummaryUnusableAnswer
+from competitor_pulse.errors import SummaryHttpError, SummaryTimeout, SummaryUnusableAnswer
 from competitor_pulse.models import PendingSummary
 from competitor_pulse.poller.llm_client import LlmHttpError, LlmTimeoutError, LlmUnusableAnswerError
 from competitor_pulse.poller.summarizer import Summarizer
@@ -71,6 +71,33 @@ async def test_failure_after_the_last_attempt_is_stored():
     assert repository.failures == {
         1: (SummaryTimeout(message="The LLM did not answer within 60s", after_seconds=60), False)
     }
+
+
+@pytest.mark.parametrize("status", [400, 401, 403, 404, 422])
+async def test_http_error_that_would_fail_again_is_stored_without_another_attempt(status: int):
+    repository = FakeSummaryRepository([change(1)])
+    llm = FakeLlm(LlmHttpError(status))
+
+    await Summarizer(repository, llm, CONFIG).summarize(change(1))
+
+    assert repository.failures == {
+        1: (
+            SummaryHttpError(message=f"The LLM answered with HTTP {status}", status=status),
+            False,
+        )
+    }
+    assert repository.reservations == 1
+
+
+@pytest.mark.parametrize("status", [408, 429, 500, 502, 503])
+async def test_http_error_that_can_pass_is_retried(status: int):
+    repository = FakeSummaryRepository([change(1)])
+    llm = FakeLlm(LlmHttpError(status), "The title is now Acme CRM Pro.")
+
+    await Summarizer(repository, llm, CONFIG).summarize(change(1))
+
+    assert repository.summaries == {1: "The title is now Acme CRM Pro."}
+    assert repository.reservations == 2
 
 
 async def test_unusable_answer_is_stored_without_another_attempt():

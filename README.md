@@ -223,13 +223,15 @@ CP_TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres poet
   with the first and a change is never reported, or summarized, twice. Paging the timeline uses
   `(fetched_at, id)` as a cursor, so new polls arriving while a user pages never cause gaps or
   repeats.
-- **The LLM and its daily cap.** A change is stored as `pending` before the LLM is asked, so a
-  slow or failing LLM never loses a poll; the summarizer runs next to the poller and takes the
-  newest changes first, because they matter most when there is a backlog. Each call is reserved
-  against the cap in PostgreSQL first, in one statement, so the cap holds however many calls run
-  at once; a failed call counts too. A failure is tried up to `CP_LLM_MAX_ATTEMPTS` times, then
-  shown as `llm_failed` with the reason; an unusable answer (empty, cut off or too long) is not
-  retried and is shown as `llm_unusable`. When the cap is reached, every waiting change is shown as
+- **The LLM and its daily cap.** A change is stored as `pending` before the LLM is asked, so a slow
+  or failing LLM never loses a poll; the summarizer runs next to the poller and takes the newest
+  changes first, because they matter most when there is a backlog. Each call is reserved against the
+  cap in PostgreSQL first, in one statement, so the cap holds however many calls run at once; a
+  failed call counts too. A failure is tried up to `CP_LLM_MAX_ATTEMPTS` times, then shown as
+  `llm_failed` with the reason; an HTTP error that would fail the same way again (a 4xx such as a
+  wrong key or an unknown model, but not 408 or 429) is not retried, so a misconfigured LLM does not
+  spend the cap three times over; an unusable answer (empty, cut off or too long) is not retried and
+  is shown as `llm_unusable`. When the cap is reached, every waiting change is shown as
   `cap_reached`, and these are not retried the next day, so that day's budget goes to new changes.
   In every case the API returns the changed fields with their old and new values, so the user sees
   what changed even without a summary.

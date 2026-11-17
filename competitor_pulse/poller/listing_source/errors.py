@@ -30,7 +30,7 @@ class SourceTimeoutError(SourceError):
 
 
 class SourceConnectionError(SourceError):
-    """The connection to the source failed or was dropped."""
+    """The request to the source failed without an answer: connection, protocol or decoding."""
 
     def __init__(self, reason: str):
         super().__init__(f"Could not reach the source: {reason}", kind="connection")
