@@ -61,6 +61,28 @@ owns the source's rate limit. Compose sets the database URL for the API itself; 
 `.env` if it exists. If port 5432 is taken on your machine, set `POSTGRES_PORT`, for example
 `POSTGRES_PORT=55432 docker compose up --build`.
 
+## Run without Docker
+
+The backend needs Python 3.14 and [Poetry](https://python-poetry.org), plus a PostgreSQL, the
+listing source and an LLM. The simplest is to start only those three with Compose and run the API
+and the poller from the checkout:
+
+```bash
+docker compose up -d db listing-source mock-llm
+export CP_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/competitor_pulse
+
+poetry install
+poetry run alembic upgrade head
+poetry run competitor_pulse          # the API, on http://localhost:8080
+poetry run competitor_pulse_poller   # in a second terminal: the poller, summarizer and cleaner
+```
+
+The source and the LLM default to `http://localhost:4002` and `http://localhost:4001/v1`, where
+Compose publishes them; without Docker at all, start them with
+`node assets/files/listing-source/listing-source-server.mjs` (Node.js 18 or later) and
+`python3 assets/files/mock-llm/mock-llm-server.py`. For the UI, run the Vite dev server (see
+[Frontend](#frontend)); it forwards `/api` to the API on port 8080.
+
 ## Point it at your own source and LLM
 
 Docker Compose starts the provided listing source and mock LLM, and the poller uses them unless
