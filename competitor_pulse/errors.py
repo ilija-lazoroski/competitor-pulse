@@ -74,26 +74,26 @@ poll_error_adapter: Final = TypeAdapter(PollError)
 # Stored in snapshots.summary_error: why the LLM did not give a summary.
 
 
-class LlmTimeout(ErrorRecord):
+class SummaryTimeout(ErrorRecord):
     kind: Literal["timeout"] = "timeout"
     after_seconds: float
 
 
-class LlmConnectionError(ErrorRecord):
+class SummaryConnectionError(ErrorRecord):
     kind: Literal["connection"] = "connection"
 
 
-class LlmHttpError(ErrorRecord):
+class SummaryHttpError(ErrorRecord):
     kind: Literal["http_status"] = "http_status"
     status: int
 
 
-class LlmUnusableAnswer(ErrorRecord):
+class SummaryUnusableAnswer(ErrorRecord):
     kind: Literal["unusable"] = "unusable"
 
 
 SummaryError = Annotated[
-    LlmTimeout | LlmConnectionError | LlmHttpError | LlmUnusableAnswer,
+    SummaryTimeout | SummaryConnectionError | SummaryHttpError | SummaryUnusableAnswer,
     Field(discriminator="kind"),
 ]
 summary_error_adapter: Final = TypeAdapter(SummaryError)

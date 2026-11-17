@@ -53,16 +53,16 @@ to_sqlalchemy_url
 # Step 1 (data model): used by the poller, the LLM worker and the API in the next steps.
 from competitor_pulse.errors import (  # noqa: E402
     ErrorRecord,
-    LlmConnectionError,
-    LlmHttpError,
-    LlmTimeout,
-    LlmUnusableAnswer,
     PollConnectionError,
     PollHttpError,
     PollIncomplete,
     PollInvalidBody,
     PollRateLimited,
     PollTimeout,
+    SummaryConnectionError,
+    SummaryHttpError,
+    SummaryTimeout,
+    SummaryUnusableAnswer,
     poll_error_adapter,
     summary_error_adapter,
 )
@@ -104,12 +104,12 @@ Price.period
 Price.unit
 Price._only_paid_prices_have_currency_period_and_unit
 ErrorRecord.message
-LlmConnectionError.kind
-LlmHttpError.kind
-LlmHttpError.status
-LlmTimeout.kind
-LlmTimeout.after_seconds
-LlmUnusableAnswer.kind
+SummaryConnectionError.kind
+SummaryHttpError.kind
+SummaryHttpError.status
+SummaryTimeout.kind
+SummaryTimeout.after_seconds
+SummaryUnusableAnswer.kind
 PollConnectionError.kind
 PollHttpError.kind
 PollHttpError.status

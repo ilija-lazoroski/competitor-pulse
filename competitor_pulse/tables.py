@@ -8,10 +8,12 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Column,
+    Date,
     DateTime,
     ForeignKey,
     Identity,
     Index,
+    Integer,
     MetaData,
     Numeric,
     Table,
@@ -140,4 +142,14 @@ snapshots = Table(
     ),
     # Rows arrive in time order, so a BRIN index on the age stays tiny.
     Index("ix_snapshots_fetched_at_brin", "fetched_at", postgresql_using="brin"),
+)
+
+
+# LLM calls per UTC day, against the daily cap. A call counts as soon as it is reserved.
+llm_usage = Table(
+    "llm_usage",
+    metadata,
+    Column("day", Date, primary_key=True),
+    Column("calls", Integer, nullable=False),
+    CheckConstraint("calls >= 0", name="calls_not_negative"),
 )

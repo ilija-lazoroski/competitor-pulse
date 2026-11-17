@@ -252,3 +252,29 @@ async def test_snapshot_prices_are_formatted(
     free, per_seat = await repository.list_snapshots("acme-crm", None, None)
 
     assert (free.price, per_seat.price) == ("Free", "$29/seat/mo")
+
+
+async def test_snapshot_changes_are_shown_formatted(
+    repository: PostgresCompetitorRepository, migrated_engine: Engine
+):
+    insert_snapshots(
+        migrated_engine,
+        "acme-crm",
+        [START],
+        changed=True,
+        changes={
+            "price": {
+                "old": {"amount": "39.00", "currency": "USD", "period": "month", "unit": None},
+                "new": {"amount": "12.00", "currency": "USD", "period": "month", "unit": "seat"},
+            },
+            "tagline": {"old": "Simple CRM for small teams", "new": None},
+        },
+        summary_status="pending",
+    )
+
+    [snapshot] = await repository.list_snapshots("acme-crm", None, None)
+
+    assert snapshot.model_dump(mode="json", by_alias=True)["changes"] == {
+        "price": {"old": "$39/mo", "new": "$12/seat/mo"},
+        "tagline": {"old": "Simple CRM for small teams", "new": None},
+    }

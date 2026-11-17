@@ -87,8 +87,32 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
   `changes` with old and new values, `summary_status` `pending`, and the
   competitor's `last_changed_at`). Unreadable fields and failed polls never
   count as a change.
+- LLM summaries: a summarizer runs next to the poller and asks an
+  OpenAI-compatible Chat Completions API (the mock LLM by default, Ollama
+  with `ollama.env` and the `ollama` compose profile, or any other with
+  `CP_LLM_BASE_URL`) to summarize each pending change, newest first. Calls
+  are reserved against `CP_LLM_DAILY_CAP` per UTC day in the new
+  `llm_usage` table. Failures are retried up to `CP_LLM_MAX_ATTEMPTS` times
+  and then stored as `llm_failed`; unusable answers as `llm_unusable`; when
+  the cap is reached, waiting changes become `cap_reached`.
+- LLM settings: `CP_LLM_BASE_URL`, `CP_LLM_MODEL`, `CP_LLM_API_KEY`,
+  `CP_LLM_TIMEOUT_SECONDS`, `CP_LLM_MAX_ATTEMPTS`,
+  `CP_LLM_RETRY_BACKOFF_SECONDS`, `CP_LLM_DAILY_CAP`, `CP_LLM_MAX_IN_FLIGHT`,
+  `CP_LLM_MAX_SUMMARY_CHARS` and `CP_LLM_IDLE_SECONDS`.
+- Prompt injection defences for the summaries: instructions that treat the
+  listing as untrusted data; the change sent as JSON between
+  `<listing_change>` markers that listing text cannot close; values cut at
+  `CP_LLM_MAX_FIELD_CHARS` (default `1000`); `temperature` 0 and
+  `CP_LLM_MAX_TOKENS` (default `150`); answers with links, Markdown, HTML or
+  more than one line are stored as `llm_unusable`.
+- Snapshots in the API have `changes`: each changed field's old and new
+  value, formatted, so a change is visible without a summary.
 
 ### Changed
+
+- The stored LLM error records are named `SummaryTimeout`,
+  `SummaryConnectionError`, `SummaryHttpError` and `SummaryUnusableAnswer`.
+
 ### Fixed
 ### Removed
 ### Security

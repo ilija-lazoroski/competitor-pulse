@@ -7,8 +7,8 @@ from fastapi.testclient import TestClient
 
 from competitor_pulse.app.dependencies import competitor_repository
 from competitor_pulse.app.main import app
-from competitor_pulse.models import Snapshot
-from competitor_pulse.types import PollOutcome, SummaryStatus
+from competitor_pulse.models import ChangeView, Snapshot
+from competitor_pulse.types import ListingField, PollOutcome, SummaryStatus
 from tests.app.competitor_repository.fake_competitor_repository import FakeCompetitorRepository
 
 SNAPSHOT = Snapshot(
@@ -21,6 +21,7 @@ SNAPSHOT = Snapshot(
     price="$29/mo",
     description="Track leads and deals in one place.",
     changed=True,
+    changes={ListingField.PRICE: ChangeView(old="$39/mo", new="$29/mo")},
     summary="Price dropped from $39/mo to $29/mo.",
     summary_status=SummaryStatus.READY,
     summary_error=None,
@@ -74,6 +75,7 @@ def test_snapshots_are_listed_in_camel_case(
             "price": "$29/mo",
             "description": "Track leads and deals in one place.",
             "changed": True,
+            "changes": {"price": {"old": "$39/mo", "new": "$29/mo"}},
             "summary": "Price dropped from $39/mo to $29/mo.",
             "summaryStatus": "ready",
             "summaryError": None,

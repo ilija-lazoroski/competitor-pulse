@@ -7,14 +7,17 @@ from competitor_pulse.configuration import load_configuration
 from competitor_pulse.database import Database
 from competitor_pulse.poller.cleaner import Cleaner
 from competitor_pulse.poller.listing_source import HttpListingSource
+from competitor_pulse.poller.llm_client import OpenAiLlmClient
 from competitor_pulse.poller.poll_repository import PostgresPollRepository
 from competitor_pulse.poller.poller import Poller
 from competitor_pulse.poller.rate_limiter import RateLimiter
 from competitor_pulse.poller.retention_repository import PostgresRetentionRepository
+from competitor_pulse.poller.summarizer import Summarizer
+from competitor_pulse.poller.summary_repository import PostgresSummaryRepository
 
 
 async def run() -> None:
-    """Loads the configuration, then polls and cleans until SIGTERM or SIGINT, and closes all.
+    """Loads the configuration, then polls, cleans and summarizes until SIGTERM or SIGINT.
 
     :raises ValidationError: If a setting is missing or invalid
     """
@@ -31,6 +34,8 @@ async def run() -> None:
         config.poller,
     )
     cleaner = Cleaner(PostgresRetentionRepository(database.engine), config.cleaner)
+    llm = OpenAiLlmClient.from_configuration(config.llm)
+    summarizer = Summarizer(PostgresSummaryRepository(database.engine), llm, config.llm)
 
     current = asyncio.current_task()
     loop = asyncio.get_running_loop()
@@ -42,10 +47,12 @@ async def run() -> None:
         async with asyncio.TaskGroup() as tasks:
             tasks.create_task(poller.run())
             tasks.create_task(cleaner.run())
+            tasks.create_task(summarizer.run())
     except asyncio.CancelledError:
         logger.info("Poller stopping")
     finally:
         await source.close()
+        await llm.close()
         await database.close()
 
 

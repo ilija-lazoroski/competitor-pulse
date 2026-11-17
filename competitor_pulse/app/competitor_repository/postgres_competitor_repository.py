@@ -11,10 +11,10 @@ from competitor_pulse.app.competitor_repository.errors import (
     InvalidPageSizeError,
 )
 from competitor_pulse.configuration import ApiConfiguration
-from competitor_pulse.formatting import format_price
-from competitor_pulse.models import Competitor, Snapshot
+from competitor_pulse.formatting import format_price, format_value
+from competitor_pulse.models import ChangeView, Competitor, Snapshot
 from competitor_pulse.tables import competitors, is_tracked, snapshots
-from competitor_pulse.types import CompetitorId, Price
+from competitor_pulse.types import CompetitorId, Price, changes_adapter
 
 
 class PostgresCompetitorRepository(CompetitorRepository):
@@ -152,7 +152,22 @@ def _to_snapshot(row: Row) -> Snapshot:
         price=price,
         description=values["description"],
         changed=values["changed"],
+        changes=_to_change_views(values["changes"]),
         summary=values["summary"],
         summary_status=values["summary_status"],
         summary_error=values["summary_error_message"],
     )
+
+
+def _to_change_views(stored: dict | None) -> dict | None:
+    """Formats a snapshot's stored changes for people.
+
+    :param stored: The snapshot's changes column; None if nothing changed
+    :returns: Each changed field's old and new value as text, with prices formatted
+    """
+    if stored is None:
+        return None
+    return {
+        field: ChangeView(old=format_value(change.old), new=format_value(change.new))
+        for field, change in changes_adapter.validate_python(stored).items()
+    }

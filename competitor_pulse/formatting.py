@@ -25,3 +25,12 @@ def format_price(price: Price) -> str:
     money = f"{symbol}{number}" if symbol else f"{number} {price.currency}"
     unit = f"/{price.unit}" if price.unit else ""
     return money + unit + PERIOD_SUFFIXES[price.period]
+
+
+def format_value(value: str | Price | None) -> str | None:
+    """Formats a listing field's value for people.
+
+    :param value: A text field, a price, or None for a value that is not there
+    :returns: The text as it is, the price formatted, or None
+    """
+    return format_price(value) if isinstance(value, Price) else value

@@ -169,6 +169,59 @@ class CleanerConfiguration(BaseSettings, ServiceKitBaseModel):
     )
 
 
+class LlmConfiguration(BaseSettings, ServiceKitBaseModel):
+    """Settings of the LLM that writes change summaries, from CP_LLM_* environment variables.
+
+    Any server with an OpenAI-compatible Chat Completions API works: the provided mock, Ollama,
+    or a hosted LLM.
+    """
+
+    model_config = SettingsConfigDict(
+        env_parse_none_str="None",
+        env_prefix="CP_LLM_",
+        extra="ignore",
+        hide_input_in_errors=True,
+    )
+
+    base_url: AnyHttpUrl = Field(
+        default=AnyHttpUrl("http://localhost:4001/v1"),
+        description="The OpenAI-compatible API; requests go to <base_url>/chat/completions",
+    )
+    model: str = Field(default="mock-llm", min_length=1, description="The model to ask")
+    api_key: SecretStr | None = Field(
+        default=None, description="Sent as a bearer token, if the LLM needs one"
+    )
+    timeout_seconds: float = Field(
+        default=60, gt=0, description="How long one call to the LLM may take"
+    )
+    max_attempts: int = Field(
+        default=3, ge=1, description="Calls per change before its summary counts as failed"
+    )
+    retry_backoff_seconds: float = Field(
+        default=2, ge=0, description="Wait before the next attempt, multiplied by the attempt"
+    )
+    daily_cap: int = Field(
+        default=2000, ge=0, description="Most LLM calls per UTC day, for all competitors"
+    )
+    max_in_flight: int = Field(
+        default=4, ge=1, description="Most LLM calls waiting for an answer at once"
+    )
+    max_summary_chars: int = Field(
+        default=500, ge=1, description="Longer answers are unusable rather than stored"
+    )
+    max_tokens: int = Field(
+        default=150, ge=1, description="Most tokens the LLM may write; a longer answer is cut off"
+    )
+    max_field_chars: int = Field(
+        default=1000,
+        ge=1,
+        description="Longer listing values are cut before they go into the prompt",
+    )
+    idle_seconds: float = Field(
+        default=1, gt=0, description="How long the summarizer waits when no change is pending"
+    )
+
+
 class CompetitorPulseConfiguration(ServiceConfiguration):
     """Settings come from CP_* environment variables or the .env file at CP_CONFIG_PATH."""
 
@@ -184,13 +237,14 @@ class CompetitorPulseConfiguration(ServiceConfiguration):
     source: SourceConfiguration = Field(description="The listing source settings")
     poller: PollerConfiguration = Field(description="The poller settings")
     cleaner: CleanerConfiguration = Field(description="The cleaner settings")
+    llm: LlmConfiguration = Field(description="The LLM settings")
 
 
 def load_configuration() -> CompetitorPulseConfiguration:
     """Loads the settings from CP_* environment variables and the .env file at CP_CONFIG_PATH.
 
-    :returns: The settings, with the database, API, source, poller and cleaner settings as
-              sub-configurations
+    :returns: The settings, with the database, API, source, poller, cleaner and LLM settings
+              as sub-configurations
     :raises ValidationError: If a setting is missing or invalid
     """
     config_file_path = None
@@ -203,11 +257,13 @@ def load_configuration() -> CompetitorPulseConfiguration:
     source = SourceConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
     poller = PollerConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
     cleaner = CleanerConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
+    llm = LlmConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
     return CompetitorPulseConfiguration(
         _env_file=config_file_path,
         database=database,
         api=api,
         source=source,
         poller=poller,
-        cleaner=cleaner,  # type: ignore[call-arg]
+        cleaner=cleaner,
+        llm=llm,  # type: ignore[call-arg]
     )

@@ -198,4 +198,76 @@ How often the cleaner deletes what is older
 *Optional*, default value: `10000`
 
 Most snapshots deleted in one transaction, so each one stays short
+
+## `CP_LLM_BASE_URL`
+
+*Optional*, default value: `http://localhost:4001/v1`
+
+The OpenAI-compatible API; requests go to <base_url>/chat/completions
+
+## `CP_LLM_MODEL`
+
+*Optional*, default value: `mock-llm`
+
+The model to ask
+
+## `CP_LLM_API_KEY`
+
+*Optional*, default value: `None`
+
+Sent as a bearer token, if the LLM needs one
+
+## `CP_LLM_TIMEOUT_SECONDS`
+
+*Optional*, default value: `60`
+
+How long one call to the LLM may take
+
+## `CP_LLM_MAX_ATTEMPTS`
+
+*Optional*, default value: `3`
+
+Calls per change before its summary counts as failed
+
+## `CP_LLM_RETRY_BACKOFF_SECONDS`
+
+*Optional*, default value: `2`
+
+Wait before the next attempt, multiplied by the attempt
+
+## `CP_LLM_DAILY_CAP`
+
+*Optional*, default value: `2000`
+
+Most LLM calls per UTC day, for all competitors
+
+## `CP_LLM_MAX_IN_FLIGHT`
+
+*Optional*, default value: `4`
+
+Most LLM calls waiting for an answer at once
+
+## `CP_LLM_MAX_SUMMARY_CHARS`
+
+*Optional*, default value: `500`
+
+Longer answers are unusable rather than stored
+
+## `CP_LLM_MAX_TOKENS`
+
+*Optional*, default value: `150`
+
+Most tokens the LLM may write; a longer answer is cut off
+
+## `CP_LLM_MAX_FIELD_CHARS`
+
+*Optional*, default value: `1000`
+
+Longer listing values are cut before they go into the prompt
+
+## `CP_LLM_IDLE_SECONDS`
+
+*Optional*, default value: `1`
+
+How long the summarizer waits when no change is pending
 <!-- options-end -->
