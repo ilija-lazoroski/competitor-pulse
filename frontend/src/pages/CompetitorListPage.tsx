@@ -38,6 +38,12 @@ export function CompetitorListPage() {
       </div>
       <TrackForm onTracked={load} />
       {loadError && <p className="error">{loadError}</p>}
+      {/* Only before the first answer: an error then says why the list is not there. */}
+      {!competitors && !loadError && (
+        <p className="empty muted" role="status">
+          Loading competitors…
+        </p>
+      )}
       {competitors && <CompetitorList competitors={competitors} onRemoved={load} />}
     </section>
   );
