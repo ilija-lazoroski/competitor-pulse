@@ -1,8 +1,8 @@
 from datetime import datetime
 
 from competitor_pulse.errors import PollIncomplete, PollNotFound, poll_error_adapter
-from competitor_pulse.listing_source import SourceError
 from competitor_pulse.models import Listing, PollResult
+from competitor_pulse.poller.listing_source import SourceError
 from competitor_pulse.types import PollOutcome
 
 

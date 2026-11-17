@@ -4,7 +4,7 @@ from decimal import Decimal
 import httpx2 as httpx
 import pytest
 
-from competitor_pulse.listing_source import (
+from competitor_pulse.poller.listing_source import (
     HttpListingSource,
     ListingNotFoundError,
     SourceConnectionError,

@@ -5,17 +5,17 @@ from datetime import UTC, datetime
 import pytest
 
 from competitor_pulse.configuration import PollerConfiguration
-from competitor_pulse.listing_source import (
+from competitor_pulse.models import Listing, PollResult
+from competitor_pulse.poller.listing_source import (
     ListingNotFoundError,
     SourceRateLimitedError,
     SourceTimeoutError,
 )
-from competitor_pulse.models import Listing, PollResult
 from competitor_pulse.poller.poller import Poller
 from competitor_pulse.poller.rate_limiter import RateLimiter
 from competitor_pulse.types import CompetitorId, PollOutcome
-from tests.listing_source.fake_listing_source import FakeListingSource
-from tests.poll_repository.fake_poll_repository import FakePollRepository
+from tests.poller.listing_source.fake_listing_source import FakeListingSource
+from tests.poller.poll_repository.fake_poll_repository import FakePollRepository
 
 pytestmark = pytest.mark.anyio
 

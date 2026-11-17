@@ -4,8 +4,8 @@ from sqlalchemy import Row, false, func, select, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
-from competitor_pulse.competitor_repository.competitor_repository import CompetitorRepository
-from competitor_pulse.competitor_repository.errors import (
+from competitor_pulse.app.competitor_repository.competitor_repository import CompetitorRepository
+from competitor_pulse.app.competitor_repository.errors import (
     CompetitorAlreadyTrackedError,
     CompetitorNotTrackedError,
     InvalidPageSizeError,

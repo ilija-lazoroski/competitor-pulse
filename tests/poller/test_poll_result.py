@@ -3,7 +3,8 @@ from datetime import UTC, datetime
 import pytest
 
 from competitor_pulse.errors import PollHttpError, PollIncomplete, PollNotFound, PollTimeout
-from competitor_pulse.listing_source import (
+from competitor_pulse.models import Listing
+from competitor_pulse.poller.listing_source import (
     ListingNotFoundError,
     SourceConnectionError,
     SourceError,
@@ -11,7 +12,6 @@ from competitor_pulse.listing_source import (
     SourceInvalidBodyError,
     SourceTimeoutError,
 )
-from competitor_pulse.models import Listing
 from competitor_pulse.poller.poll_result import from_error, from_listing
 from competitor_pulse.types import ListingField, PollOutcome
 

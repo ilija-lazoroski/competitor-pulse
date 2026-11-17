@@ -12,7 +12,7 @@ from service_kit.api import (
 )
 from service_kit.api.responses import APIResponse, ConflictResponse, NotFoundResponse
 
-from competitor_pulse.competitor_repository import (
+from competitor_pulse.app.competitor_repository import (
     CompetitorAlreadyTrackedError,
     CompetitorNotTrackedError,
     InvalidPageSizeError,

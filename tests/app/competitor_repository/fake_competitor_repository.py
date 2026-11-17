@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from competitor_pulse.competitor_repository import (
+from competitor_pulse.app.competitor_repository import (
     CompetitorAlreadyTrackedError,
     CompetitorNotTrackedError,
     InvalidPageSizeError,

@@ -6,8 +6,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from service_kit.api import get_standard_responses
 
+from competitor_pulse.app.competitor_repository import CompetitorRepository
 from competitor_pulse.app.dependencies import competitor_repository
-from competitor_pulse.competitor_repository import CompetitorRepository
 from competitor_pulse.models import ApiModel, Competitor, Snapshot
 from competitor_pulse.types import CompetitorId
 

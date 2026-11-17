@@ -7,12 +7,12 @@ import pytest
 from sqlalchemy import Engine, func, select
 from sqlalchemy.dialects.postgresql import insert
 
-from competitor_pulse.competitor_repository import PostgresCompetitorRepository
+from competitor_pulse.app.competitor_repository import PostgresCompetitorRepository
 from competitor_pulse.configuration import ApiConfiguration
 from competitor_pulse.database import Database
 from competitor_pulse.errors import PollIncomplete, PollTimeout
 from competitor_pulse.models import Listing, PollResult
-from competitor_pulse.poll_repository import PostgresPollRepository
+from competitor_pulse.poller.poll_repository import PostgresPollRepository
 from competitor_pulse.tables import competitors, snapshots
 from competitor_pulse.types import ListingField, PollOutcome, Price, PricePeriod
 

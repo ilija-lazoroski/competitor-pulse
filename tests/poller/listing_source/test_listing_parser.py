@@ -3,7 +3,7 @@ from typing import Any
 
 import pytest
 
-from competitor_pulse.listing_source.listing_parser import (
+from competitor_pulse.poller.listing_source.listing_parser import (
     FREE_PRICE,
     clean_text,
     parse_listing,

@@ -8,7 +8,7 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from competitor_pulse.competitor_repository import (
+from competitor_pulse.app.competitor_repository import (
     CompetitorRepository,
     PostgresCompetitorRepository,
 )

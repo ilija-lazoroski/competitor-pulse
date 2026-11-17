@@ -60,11 +60,11 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
   price) and can be free: `Free`, `Free forever` and `$0/mo` are one free
   price with no currency or period. Shown as `$12/seat/mo` and `Free`.
   Migration: `price_unit` column and the matching checks.
-- Listing parser (`listing_source/listing_parser.py`): cleans the source's
-  text noise (whitespace, `&nbsp;`, `&amp;`) and reads every price form the
-  source sent while probing it (`$29/mo`, `USD 29 per month`, `€8 / seat /
-  month`, `Free`, ...) into one value, with amounts always in cents. Fields
-  that are missing, empty or unreadable are listed as missing.
+- Listing parser (`poller/listing_source/listing_parser.py`): cleans the
+  source's text noise (whitespace, `&nbsp;`, `&amp;`) and reads every price form
+  the source sent while probing it (`$29/mo`, `USD 29 per month`, `€8 / seat /
+  month`, `Free`, ...) into one value, with amounts always in cents. Fields that
+  are missing, empty or unreadable are listed as missing.
 - Source settings: `CP_SOURCE_BASE_URL` (default `http://localhost:4002`;
   `http://listing-source:4002` in Docker Compose) and
   `CP_SOURCE_TIMEOUT_SECONDS` (default `10`).

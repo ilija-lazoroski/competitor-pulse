@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import Engine, func
 from sqlalchemy.dialects.postgresql import insert
 
-from competitor_pulse.competitor_repository import (
+from competitor_pulse.app.competitor_repository import (
     CompetitorAlreadyTrackedError,
     CompetitorNotTrackedError,
     InvalidPageSizeError,

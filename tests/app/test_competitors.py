@@ -9,7 +9,7 @@ from competitor_pulse.app.dependencies import competitor_repository
 from competitor_pulse.app.main import app
 from competitor_pulse.models import Snapshot
 from competitor_pulse.types import PollOutcome, SummaryStatus
-from tests.competitor_repository.fake_competitor_repository import FakeCompetitorRepository
+from tests.app.competitor_repository.fake_competitor_repository import FakeCompetitorRepository
 
 SNAPSHOT = Snapshot(
     id=7,

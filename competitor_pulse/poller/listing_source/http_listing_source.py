@@ -3,7 +3,8 @@ from http import HTTPStatus
 import httpx2 as httpx
 
 from competitor_pulse.configuration import SourceConfiguration
-from competitor_pulse.listing_source.errors import (
+from competitor_pulse.models import Listing
+from competitor_pulse.poller.listing_source.errors import (
     ListingNotFoundError,
     SourceConnectionError,
     SourceHttpError,
@@ -11,9 +12,8 @@ from competitor_pulse.listing_source.errors import (
     SourceRateLimitedError,
     SourceTimeoutError,
 )
-from competitor_pulse.listing_source.listing_parser import parse_listing
-from competitor_pulse.listing_source.listing_source import ListingSource
-from competitor_pulse.models import Listing
+from competitor_pulse.poller.listing_source.listing_parser import parse_listing
+from competitor_pulse.poller.listing_source.listing_source import ListingSource
 from competitor_pulse.types import CompetitorId
 
 

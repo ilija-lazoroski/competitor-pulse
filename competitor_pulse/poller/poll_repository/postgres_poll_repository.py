@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from competitor_pulse.errors import poll_error_adapter
 from competitor_pulse.models import PollResult
-from competitor_pulse.poll_repository.poll_repository import PollRepository
+from competitor_pulse.poller.poll_repository.poll_repository import PollRepository
 from competitor_pulse.tables import competitors, is_tracked, snapshots
 from competitor_pulse.types import CompetitorId, PollOutcome, SummaryStatus
 

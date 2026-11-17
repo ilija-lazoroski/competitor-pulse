@@ -5,8 +5,8 @@ from service_kit.logging import configure_logger, logger
 
 from competitor_pulse.configuration import load_configuration
 from competitor_pulse.database import Database
-from competitor_pulse.listing_source import HttpListingSource
-from competitor_pulse.poll_repository import PostgresPollRepository
+from competitor_pulse.poller.listing_source import HttpListingSource
+from competitor_pulse.poller.poll_repository import PostgresPollRepository
 from competitor_pulse.poller.poller import Poller
 from competitor_pulse.poller.rate_limiter import RateLimiter
 
