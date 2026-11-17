@@ -1,4 +1,4 @@
-"""What the competitor repository returns: the API's response shapes."""
+"""The models passed between the parts of the application and returned by the API."""
 
 from datetime import datetime
 
@@ -6,7 +6,7 @@ from pydantic import Field
 from pydantic.alias_generators import to_camel
 from service_kit import ServiceKitBaseModel
 
-from competitor_pulse.types import CompetitorId, PollOutcome, SummaryStatus
+from competitor_pulse.types import CompetitorId, ListingField, PollOutcome, Price, SummaryStatus
 
 
 class ApiModel(ServiceKitBaseModel):
@@ -45,3 +45,15 @@ class Snapshot(ApiModel):
     summary: str | None = Field(description="Plain-English summary of the change, if available")
     summary_status: SummaryStatus = Field(description="Whether there is a summary, and if not, why")
     summary_error: str | None = Field(description="Why the LLM gave no summary, if it failed")
+
+
+class Listing(ServiceKitBaseModel):
+    """A competitor's listing as read from the source, cleaned up; unreadable fields are None."""
+
+    title: str | None
+    tagline: str | None
+    price: Price | None
+    description: str | None
+    missing_fields: list[ListingField] = Field(
+        description="Fields the source left out, sent empty or sent in a form we cannot read"
+    )

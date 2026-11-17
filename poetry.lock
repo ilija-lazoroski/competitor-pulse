@@ -271,13 +271,13 @@ files = [
 
 [[package]]
 name = "dlint"
-version = "0.15.0"
+version = "0.16.0"
 description = "Dlint is a tool for encouraging best coding practices and helping ensure Python code is secure."
 optional = false
-python-versions = "*"
+python-versions = "<4.0.0,>=3.8.1"
 groups = ["dev"]
 files = [
-    {file = "dlint-0.15.0-py3-none-any.whl", hash = "sha256:cc5bfa5a887427d808a3f188e5e2934ffb5bb43336f18710215b19d719d31ea7"},
+    {file = "dlint-0.16.0-py3-none-any.whl", hash = "sha256:b4b3b01460d1b310c3f2356be9ce9b7bc2112dfd9be1842eefef36a54eac9443"},
 ]
 
 [package.dependencies]
@@ -2283,4 +2283,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.14, <4.0"
-content-hash = "7ccce7ada8b9a6996496e299420e69d30d0da822a206871fd8c771c913926807"
+content-hash = "949c47eae5bda1cfc192b004d5db54aa4a6c2b56738f8998534faee79067b171"

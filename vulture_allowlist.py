@@ -124,3 +124,10 @@ changes_adapter
 poll_error_adapter
 summary_error_adapter
 snapshots
+
+# Step 3 (listing source): the parser is called by the source client and the poller next.
+from competitor_pulse.listing_source.listing_parser import parse_listing  # noqa: E402
+from competitor_pulse.models import Listing  # noqa: E402
+
+parse_listing
+Listing.missing_fields

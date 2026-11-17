@@ -15,7 +15,7 @@ repos:
     rev: 7.3.0
     hooks:
       - id: flake8
-        additional_dependencies: [dlint==0.15.0]
+        additional_dependencies: [dlint==0.16.0]
   - repo: https://github.com/pycqa/isort
     rev: 7.0.0
     hooks:
