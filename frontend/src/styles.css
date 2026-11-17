@@ -269,3 +269,67 @@ a:hover {
     width: 100%;
   }
 }
+
+/* --- Timeline --- */
+
+.snapshot-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.snapshot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+}
+
+.snapshot-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.snapshot-time {
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.listing p {
+  margin: 0;
+}
+
+.listing-title {
+  overflow-wrap: anywhere;
+}
+
+.listing-price {
+  font-weight: 600;
+}
+
+.listing-description {
+  color: var(--color-text-muted);
+}
+
+.snapshot-error {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-danger);
+}
+
+.badge-incomplete {
+  color: var(--color-changed);
+  background: var(--color-changed-soft);
+}
+
+.badge-not_found,
+.badge-failed {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
