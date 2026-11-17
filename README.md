@@ -189,6 +189,61 @@ CP_TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres poet
   marker and system rule, a demanded link, a demanded Markdown list): the model followed none of
   them. This lowers the risk; it does not guarantee a model never misbehaves.
 
+### Ports and adapters
+
+The code follows the hexagonal architecture (ports and adapters). The logic of each part depends
+only on **ports**: small `Protocol` classes that say what it needs from the outside world. An
+**adapter** implements a port for one technology: PostgreSQL, HTTP, an LLM API. The logic never
+imports an adapter; the composition roots, `app/dependencies.py` and `poller/main.py`, create the
+adapters and hand them in.
+
+| Port (`Protocol`) | Adapter | Used by | Replaced in tests by |
+|---|---|---|---|
+| `CompetitorRepository` | `PostgresCompetitorRepository` | the API's endpoints | `FakeCompetitorRepository` |
+| `PollRepository` | `PostgresPollRepository` | the Poller | `FakePollRepository` |
+| `SummaryRepository` | `PostgresSummaryRepository` | the Summarizer | `FakeSummaryRepository` |
+| `RetentionRepository` | `PostgresRetentionRepository` | the Cleaner | `FakeRetentionRepository` |
+| `ListingSource` | `HttpListingSource` | the Poller | `FakeListingSource` |
+| `LlmClient` | `OpenAiLlmClient` | the Summarizer | `FakeLlm` |
+
+Why this shape:
+
+- **The outside world is the risky part.** The source is slow, flaky and rate limited; the LLM can
+  be slow, fail or answer badly; both are swapped for other instances by the people evaluating
+  this. Behind a port, each is one class with one job, and what goes wrong there arrives as our own
+  errors (`SourceTimeoutError`, `ListingNotFoundError`, `LlmHttpError`, ...), never as an `httpx`
+  exception. The API's repository does the same for its outcomes (`CompetitorNotTrackedError`,
+  ...); a database that is down is the exception: its error is not wrapped, and is logged where the
+  poller's tasks catch everything.
+- **Logic is tested without the infrastructure.** The endpoints, the Poller, the Summarizer and the
+  Cleaner run in their tests against in-memory fakes, so the tests check our decisions (a 429 is
+  requeued, an unusable answer is not retried, the cap marks every waiting change) quickly, with no
+  database or network. Each adapter has its own tests against what it really talks to: a real
+  PostgreSQL, or an HTTP mock of the source and the LLM.
+- **Adapters can be swapped.** The mock LLM, Ollama and any other OpenAI-compatible API are one
+  adapter and a setting. A native client for another API, such as Anthropic's, would be one more
+  `LlmClient` adapter; nothing that uses the port would change.
+- **One port per consumer, not one per table.** The API, the Poller, the Summarizer and the Cleaner
+  each have their own repository with only the methods they use, so none of them can call
+  something meant for another (the API cannot claim polls; the poller cannot remove competitors).
+  The four repositories share the same tables.
+- **The repository owns the transaction.** Each method is one transaction with its own locking,
+  for example `save_poll` locks the competitor, compares, inserts and sets the last change
+  together. The callers stay free of SQL and of transactions.
+- **HTTP stays at the edge.** Endpoints make one repository call each; the repository raises our
+  errors, and only `app/api_error_handling.py` turns them into HTTP statuses.
+
+Where we bent the pattern, on purpose:
+
+- **The API's repository returns the API's models** (`Competitor`, `Snapshot` in `models.py`), with
+  the price already formatted, instead of domain objects that the endpoint would map. With one API
+  and one storage, the extra mapping layer would only repeat itself; a second API would bring it
+  back.
+- **Change detection runs inside `PostgresPollRepository.save_poll`.** The comparison itself is
+  pure logic in `poller/change_detection.py`, but the repository calls it, because it has to run
+  under the competitor's row lock: two saves of the same competitor must not both see "changed".
+  A cleaner split would need the lock (a unit of work) to be part of the port.
+
 ## Development setup
 
 Install [pre-commit](https://pre-commit.com) once per machine, then enable the hooks in each clone:
