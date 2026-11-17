@@ -56,6 +56,10 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
   `CP_API_SNAPSHOTS_PAGE_SIZE` (default `50`) and
   `CP_API_SNAPSHOTS_MAX_PAGE_SIZE` (default `200`).
 - Migration: the timeline index also covers `id`, for keyset paging.
+- Prices have a unit (`seat`, or any short lowercase word; none for a flat
+  price) and can be free: `Free`, `Free forever` and `$0/mo` are one free
+  price with no currency or period. Shown as `$12/seat/mo` and `Free`.
+  Migration: `price_unit` column and the matching checks.
 
 ### Changed
 ### Fixed

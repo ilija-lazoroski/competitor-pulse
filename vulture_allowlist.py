@@ -101,6 +101,8 @@ FieldChange.new
 Price.amount
 Price.currency
 Price.period
+Price.unit
+Price._only_paid_prices_have_currency_period_and_unit
 ErrorRecord.message
 LlmConnectionError.kind
 LlmHttpError.kind

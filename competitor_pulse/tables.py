@@ -20,7 +20,14 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import CHAR, ENUM, JSONB
 
-from competitor_pulse.types import CURRENCY_PATTERN, PollOutcome, PricePeriod, SummaryStatus
+from competitor_pulse.types import (
+    CURRENCY_PATTERN,
+    PRICE_UNIT_MAX_LENGTH,
+    PRICE_UNIT_PATTERN,
+    PollOutcome,
+    PricePeriod,
+    SummaryStatus,
+)
 
 # Constraint and index names are derived from these, so migrations name them the same way.
 NAMING_CONVENTION: Final = {
@@ -81,6 +88,7 @@ snapshots = Table(
     Column("price_amount", Numeric(12, 2)),
     Column("price_currency", CHAR(3)),
     Column("price_period", price_period_type),
+    Column("price_unit", Text),
     Column("description", Text),
     Column("changed", Boolean, nullable=False),
     Column("changes", JsonbOrNull),
@@ -88,13 +96,20 @@ snapshots = Table(
     Column("summary_status", summary_status_type, nullable=False),
     Column("summary_error", JsonbOrNull),
     CheckConstraint("(outcome = 'ok') = (error IS NULL)", name="error_iff_not_ok"),
+    # A free price (amount 0) has no currency, period or unit; a paid one has the first two.
     CheckConstraint(
-        "(price_amount IS NULL) = (price_currency IS NULL)"
-        " AND (price_amount IS NULL) = (price_period IS NULL)",
-        name="price_all_or_nothing",
+        "(coalesce(price_amount, 0) > 0) = (price_currency IS NOT NULL)"
+        " AND (coalesce(price_amount, 0) > 0) = (price_period IS NOT NULL)",
+        name="price_currency_and_period_iff_paid",
     ),
+    CheckConstraint("price_unit IS NULL OR price_amount > 0", name="price_unit_only_when_paid"),
     CheckConstraint("price_amount >= 0", name="price_amount_not_negative"),
     CheckConstraint(f"price_currency ~ '{CURRENCY_PATTERN}'", name="price_currency_iso_4217"),
+    CheckConstraint(
+        f"price_unit ~ '{PRICE_UNIT_PATTERN}'"
+        f" AND char_length(price_unit) <= {PRICE_UNIT_MAX_LENGTH}",
+        name="price_unit_format",
+    ),
     CheckConstraint("changed = (changes IS NOT NULL)", name="changes_iff_changed"),
     CheckConstraint("(summary_status = 'ready') = (summary IS NOT NULL)", name="summary_iff_ready"),
     CheckConstraint(

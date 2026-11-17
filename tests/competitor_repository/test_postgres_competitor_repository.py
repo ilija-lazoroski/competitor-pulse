@@ -234,3 +234,21 @@ async def test_snapshot_columns_become_the_api_shape(
     assert (ok.price, ok.error) == ("$29/mo", None)
     assert (poll_failed.price, poll_failed.error) == (None, "Timed out after 10s")
     assert llm_failed.summary_error == "The LLM answered 500"
+
+
+async def test_snapshot_prices_are_formatted(
+    repository: PostgresCompetitorRepository, migrated_engine: Engine
+):
+    insert_snapshots(migrated_engine, "acme-crm", [START], price_unit="seat")
+    insert_snapshots(
+        migrated_engine,
+        "acme-crm",
+        [START + timedelta(minutes=15)],
+        price_amount="0",
+        price_currency=None,
+        price_period=None,
+    )
+
+    free, per_seat = await repository.list_snapshots("acme-crm", None, None)
+
+    assert (free.price, per_seat.price) == ("Free", "$29/seat/mo")

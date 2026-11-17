@@ -5,12 +5,15 @@ The enums are stored as native PostgreSQL enums; Changes is stored in snapshots.
 
 from decimal import Decimal
 from enum import StrEnum
-from typing import Annotated, Final, TypeAlias
+from typing import Annotated, Final, Self, TypeAlias
 
-from pydantic import Field, StringConstraints, TypeAdapter
+from pydantic import Field, StringConstraints, TypeAdapter, model_validator
 from service_kit import ServiceKitBaseModel
 
 CURRENCY_PATTERN: Final = r"^[A-Z]{3}$"
+# What a price is charged per, like "seat" or "1k events": lowercase words, one space apart.
+PRICE_UNIT_PATTERN: Final = r"^[a-z0-9]+( [a-z0-9]+)*$"
+PRICE_UNIT_MAX_LENGTH: Final = 20
 COMPETITOR_ID_PATTERN: Final = r"^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$"
 
 # Lowercase slugs like "acme-crm". The id goes into the source URL (/listings/{id}), so
@@ -58,11 +61,30 @@ class ListingField(StrEnum):
 
 
 class Price(ServiceKitBaseModel):
-    """A price as values, so different formats of the same price compare equal."""
+    """A price as values, so different formats of the same price compare equal.
+
+    A free price has amount 0 and no currency, period or unit, however the source wrote it.
+    """
 
     amount: Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=2)]
-    currency: Annotated[str, Field(pattern=CURRENCY_PATTERN)]
-    period: PricePeriod
+    currency: Annotated[str | None, Field(pattern=CURRENCY_PATTERN)]
+    period: PricePeriod | None
+    unit: Annotated[
+        str | None,
+        StringConstraints(pattern=PRICE_UNIT_PATTERN, max_length=PRICE_UNIT_MAX_LENGTH),
+        Field(description="What the amount is charged per, like seat; None for a flat price"),
+    ]
+
+    @model_validator(mode="after")
+    def _only_paid_prices_have_currency_period_and_unit(self) -> Self:
+        """:raises ValueError: If a paid price lacks its currency or period, or a free one has
+        a currency, period or unit
+        """
+        if self.amount > 0 and (self.currency is None or self.period is None):
+            raise ValueError("a price above 0 needs a currency and a period")
+        if self.amount == 0 and (self.currency, self.period, self.unit) != (None, None, None):
+            raise ValueError("a free price has no currency, period or unit")
+        return self
 
 
 class FieldChange(ServiceKitBaseModel):

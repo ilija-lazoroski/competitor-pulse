@@ -90,6 +90,10 @@ def test_upgrade_after_downgrade_works(alembic_config: Config, migrated_engine: 
             "summary_status": "llm_failed",
             "summary_error": {"kind": "http_status", "message": "Server error", "status": 500},
         },
+        # A price per seat.
+        {"price_unit": "seat"},
+        # A free price.
+        {"price_amount": "0", "price_currency": None, "price_period": None},
     ],
 )
 def test_valid_snapshots_are_stored(migrated_engine: Engine, overrides: dict[str, Any]):
@@ -104,8 +108,23 @@ def test_valid_snapshots_are_stored(migrated_engine: Engine, overrides: dict[str
             "error_iff_not_ok",
         ),
         ({"outcome": "failed"}, "error_iff_not_ok"),
-        ({"price_currency": None}, "price_all_or_nothing"),
-        ({"price_period": None}, "price_all_or_nothing"),
+        ({"price_currency": None}, "price_currency_and_period_iff_paid"),
+        ({"price_period": None}, "price_currency_and_period_iff_paid"),
+        ({"price_amount": None}, "price_currency_and_period_iff_paid"),
+        ({"price_amount": "0"}, "price_currency_and_period_iff_paid"),
+        (
+            {
+                "price_amount": "0",
+                "price_currency": None,
+                "price_period": None,
+                "price_unit": "seat",
+            },
+            "price_unit_only_when_paid",
+        ),
+        ({"price_unit": "Seat"}, "price_unit_format"),
+        ({"price_unit": "seat "}, "price_unit_format"),
+        ({"price_unit": "per-seat"}, "price_unit_format"),
+        ({"price_unit": "a" * 21}, "price_unit_format"),
         ({"price_amount": "-1"}, "price_amount_not_negative"),
         ({"price_currency": "usd"}, "price_currency_iso_4217"),
         ({"changed": True}, "changes_iff_changed"),
@@ -141,3 +160,29 @@ def test_deleting_a_competitor_deletes_its_snapshots(migrated_engine: Engine):
         remaining: int = count.scalar_one()
 
     assert remaining == 0
+
+
+def test_downgrade_drops_prices_the_old_schema_cannot_hold(
+    alembic_config: Config, migrated_engine: Engine
+):
+    insert_snapshot(migrated_engine)
+    with migrated_engine.begin() as connection:
+        connection.execute(
+            snapshots.insert(),
+            [
+                {**OK_SNAPSHOT, "price_unit": "seat"},
+                {
+                    **OK_SNAPSHOT,
+                    "price_amount": "0",
+                    "price_currency": None,
+                    "price_period": None,
+                    "price_unit": None,
+                },
+            ],
+        )
+
+    command.downgrade(alembic_config, "6b0ffe8918a1")
+
+    with migrated_engine.connect() as connection:
+        prices = connection.execute(text("SELECT price_amount::text FROM snapshots ORDER BY id"))
+        assert prices.scalars().all() == ["29.00", None, None]

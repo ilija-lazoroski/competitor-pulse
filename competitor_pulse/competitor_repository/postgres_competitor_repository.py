@@ -140,6 +140,7 @@ def _to_snapshot(row: Row) -> Snapshot:
                 amount=values["price_amount"],
                 currency=values["price_currency"],
                 period=values["price_period"],
+                unit=values["price_unit"],
             )
         )
     return Snapshot(

@@ -11,14 +11,17 @@ PERIOD_SUFFIXES: Final = {
 
 
 def format_price(price: Price) -> str:
-    """Formats a price for people, like $29/mo, €29.99/yr or 49 CHF one-time.
+    """Formats a price for people, like $29/mo, $12/seat/mo, €29.99/yr or Free.
 
     :param price: The price to format
     :returns: The price with a currency symbol where one is known; whole amounts lose their
               decimals
     """
+    if price.currency is None or price.period is None:
+        return "Free"
     amount = price.amount
     number = f"{amount:.0f}" if amount == amount.to_integral_value() else f"{amount:.2f}"
     symbol = CURRENCY_SYMBOLS.get(price.currency)
     money = f"{symbol}{number}" if symbol else f"{number} {price.currency}"
-    return money + PERIOD_SUFFIXES[price.period]
+    unit = f"/{price.unit}" if price.unit else ""
+    return money + unit + PERIOD_SUFFIXES[price.period]
