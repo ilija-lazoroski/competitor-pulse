@@ -65,13 +65,21 @@ class Snapshot(ApiModel):
     summary_error: str | None = Field(description="Why the LLM gave no summary, if it failed")
 
 
-class Listing(ServiceKitBaseModel):
-    """A competitor's listing as read from the source, cleaned up; unreadable fields are None."""
+class ListingValues(ServiceKitBaseModel):
+    """The fields of a listing that we keep and compare; None where a value is not known.
+
+    Stored in competitors.known_listing as the last value the source sent for each field.
+    """
 
     title: str | None
     tagline: str | None
     price: Price | None
     description: str | None
+
+
+class Listing(ListingValues):
+    """A competitor's listing as read from the source, cleaned up; unreadable fields are None."""
+
     missing_fields: list[ListingField] = Field(
         description="Fields the source left out, sent empty or sent in a form we cannot read"
     )

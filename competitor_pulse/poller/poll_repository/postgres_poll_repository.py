@@ -1,15 +1,15 @@
 from datetime import timedelta
 from typing import Any, Final
 
-from sqlalchemy import func, select
+from sqlalchemy import Row, func, select
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from competitor_pulse.errors import poll_error_adapter
-from competitor_pulse.models import Listing, PollResult
-from competitor_pulse.poller.change_detection import ChangeDecision, decide
+from competitor_pulse.models import ListingValues, PollResult
+from competitor_pulse.poller.change_detection import ChangeDecision, decide, remember
 from competitor_pulse.poller.poll_repository.poll_repository import PollRepository
 from competitor_pulse.tables import competitors, is_tracked, snapshots
-from competitor_pulse.types import CompetitorId, PollOutcome, Price, changes_adapter
+from competitor_pulse.types import CompetitorId, PollOutcome, changes_adapter
 
 _LISTING_OUTCOMES: Final = (PollOutcome.OK, PollOutcome.INCOMPLETE)
 
@@ -49,12 +49,18 @@ class PostgresPollRepository(PollRepository):
 
     async def save_poll(self, competitor_id: CompetitorId, result: PollResult) -> bool:
         async with self._engine.begin() as connection:
-            if not await self._lock_tracked(connection, competitor_id):
+            competitor = await self._lock_tracked(connection, competitor_id)
+            if competitor is None:
                 return False
 
+            known = (
+                ListingValues.model_validate(competitor.known_listing)
+                if competitor.known_listing is not None
+                else None
+            )
             decision = decide(
                 result,
-                previous_listing=await self._latest_listing(connection, competitor_id),
+                previous_listing=known,
                 previously_delisted=await self._latest_answer_was_not_found(
                     connection, competitor_id
                 ),
@@ -64,59 +70,22 @@ class PostgresPollRepository(PollRepository):
                     competitor_id=competitor_id, **_snapshot_values(result, decision)
                 )
             )
+
+            updates: dict[str, Any] = {}
+            if result.listing is not None:
+                remembered = remember(known, result.listing)
+                updates["known_listing"] = (
+                    remembered.model_dump(mode="json") if remembered is not None else None
+                )
             if decision.changed:
+                updates["last_changed_at"] = func.greatest(
+                    competitors.c.last_changed_at, result.fetched_at
+                )
+            if updates:
                 await connection.execute(
-                    competitors.update()
-                    .where(competitors.c.id == competitor_id)
-                    .values(
-                        last_changed_at=func.greatest(
-                            competitors.c.last_changed_at, result.fetched_at
-                        )
-                    )
+                    competitors.update().where(competitors.c.id == competitor_id).values(updates)
                 )
             return True
-
-    @staticmethod
-    async def _latest_listing(
-        connection: AsyncConnection, competitor_id: CompetitorId
-    ) -> Listing | None:
-        """Reads the listing of the competitor's latest snapshot that has one.
-
-        Snapshots of one competitor are saved one at a time, so the highest id is the latest.
-
-        :param connection: The connection holding the competitor's lock
-        :param competitor_id: The competitor
-        :returns: The listing, or None if the competitor never had one
-        """
-        row = (
-            await connection.execute(
-                select(snapshots)
-                .where(
-                    snapshots.c.competitor_id == competitor_id,
-                    snapshots.c.outcome.in_(_LISTING_OUTCOMES),
-                )
-                .order_by(snapshots.c.id.desc())
-                .limit(1)
-            )
-        ).first()
-        if row is None:
-            return None
-        values = row._mapping
-        price = None
-        if values["price_amount"] is not None:
-            price = Price(
-                amount=values["price_amount"],
-                currency=values["price_currency"],
-                period=values["price_period"],
-                unit=values["price_unit"],
-            )
-        return Listing(
-            title=values["title"],
-            tagline=values["tagline"],
-            price=price,
-            description=values["description"],
-            missing_fields=[],
-        )
 
     @staticmethod
     async def _latest_answer_was_not_found(
@@ -142,19 +111,19 @@ class PostgresPollRepository(PollRepository):
         return outcome == PollOutcome.NOT_FOUND
 
     @staticmethod
-    async def _lock_tracked(connection: AsyncConnection, competitor_id: CompetitorId) -> bool:
+    async def _lock_tracked(connection: AsyncConnection, competitor_id: CompetitorId) -> Row | None:
         """Locks a tracked competitor's row against every other writer until the transaction ends.
 
         :param connection: The connection whose transaction holds the lock
         :param competitor_id: The competitor to lock
-        :returns: True if locked; False if the competitor is not tracked
+        :returns: The competitor's known_listing column; None if the competitor is not tracked
         """
         tracked = await connection.execute(
-            select(competitors.c.id)
+            select(competitors.c.known_listing)
             .where(competitors.c.id == competitor_id, is_tracked)
             .with_for_update()
         )
-        return tracked.first() is not None
+        return tracked.first()
 
 
 def _snapshot_values(result: PollResult, decision: ChangeDecision) -> dict[str, Any]:

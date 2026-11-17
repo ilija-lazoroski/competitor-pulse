@@ -11,7 +11,7 @@ from competitor_pulse.app.competitor_repository import PostgresCompetitorReposit
 from competitor_pulse.configuration import ApiConfiguration
 from competitor_pulse.database import Database
 from competitor_pulse.errors import PollIncomplete, PollNotFound, PollTimeout
-from competitor_pulse.models import Listing, PollResult
+from competitor_pulse.models import ChangeView, Listing, PollResult
 from competitor_pulse.poller.poll_repository import PostgresPollRepository
 from competitor_pulse.tables import competitors, snapshots
 from competitor_pulse.types import ListingField, PollOutcome, Price, PricePeriod
@@ -217,12 +217,13 @@ async def test_save_waits_for_a_concurrent_save_and_sees_its_snapshot(
 ):
     await competitor_repository.add("acme-crm")
 
-    # Another save of the same competitor is half-way: row locked, first listing inserted.
+    # Another save of the same competitor is half-way: row locked, first listing inserted and
+    # remembered.
     async with migrated_database.engine.begin() as other_save:
         await other_save.execute(
-            select(competitors.c.id)
+            competitors.update()
             .where(competitors.c.id == "acme-crm")
-            .with_for_update(read=True)
+            .values(known_listing=LISTING.model_dump(mode="json", exclude={"missing_fields"}))
         )
         await other_save.execute(
             snapshots.insert().values(
@@ -301,6 +302,46 @@ async def test_a_failed_poll_in_between_does_not_break_the_comparison(
     assert statuses == ["baseline", "poll_failed", "no_change"]
     [competitor] = await competitor_repository.list_tracked()
     assert competitor.last_changed_at is None
+
+
+async def test_a_change_after_an_incomplete_poll_is_compared_with_the_last_value_read(
+    poll_repository: PostgresPollRepository,
+    competitor_repository: PostgresCompetitorRepository,
+):
+    await competitor_repository.add("lumen-docs")
+    incomplete = LISTING.model_copy(update={"price": None, "missing_fields": [ListingField.PRICE]})
+    missing = PollIncomplete(message="The source left out price", fields=[ListingField.PRICE])
+    cheaper_price = Price(
+        amount=Decimal("10.00"), currency="USD", period=PricePeriod.MONTH, unit="seat"
+    )
+
+    await poll_repository.save_poll("lumen-docs", poll())
+    await poll_repository.save_poll(
+        "lumen-docs",
+        poll(
+            fetched_at=START + INTERVAL,
+            outcome=PollOutcome.INCOMPLETE,
+            error=missing,
+            listing=incomplete,
+        ),
+    )
+    await poll_repository.save_poll(
+        "lumen-docs",
+        poll(
+            fetched_at=START + 2 * INTERVAL,
+            listing=LISTING.model_copy(update={"price": cheaper_price}),
+        ),
+    )
+
+    history = [
+        (s.summary_status, s.changes)
+        for s in await snapshots_of(competitor_repository, "lumen-docs")
+    ]
+    assert history == [
+        ("baseline", None),
+        ("no_change", None),
+        ("pending", {"price": ChangeView(old="$12/seat/mo", new="$10/seat/mo")}),
+    ]
 
 
 async def test_disappearing_and_coming_back_are_changes_with_fixed_summaries(

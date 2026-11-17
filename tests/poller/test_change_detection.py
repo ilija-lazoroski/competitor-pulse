@@ -5,12 +5,13 @@ from typing import Any
 import pytest
 
 from competitor_pulse.errors import PollNotFound, PollTimeout
-from competitor_pulse.models import Listing, PollResult
+from competitor_pulse.models import Listing, ListingValues, PollResult
 from competitor_pulse.poller.change_detection import (
     DELISTED_SUMMARY,
     RELISTED_UNCHANGED_SUMMARY,
     compare,
     decide,
+    remember,
 )
 from competitor_pulse.types import FieldChange, ListingField, PollOutcome, Price, PricePeriod
 
@@ -140,3 +141,30 @@ def test_decide(
         summary,
     )
     assert (decision.changes is not None) == changed
+
+
+KNOWN = ListingValues(**LISTING.model_dump(exclude={"missing_fields"}))
+
+
+@pytest.mark.parametrize(
+    ("known", "current", "expected"),
+    [
+        # The first listing read is what is known.
+        (None, LISTING, KNOWN),
+        # A value read replaces the known one.
+        (KNOWN, listing(price=CHEAPER), KNOWN.model_copy(update={"price": CHEAPER})),
+        # A field the poll could not read keeps its known value.
+        (
+            KNOWN,
+            listing(price=None, title="Acme CRM Pro"),
+            KNOWN.model_copy(update={"title": "Acme CRM Pro"}),
+        ),
+        (None, listing(price=None), KNOWN.model_copy(update={"price": None})),
+        # Nothing read and nothing known yet: still nothing known.
+        (None, listing(title=None, tagline=None, price=None, description=None), None),
+    ],
+)
+def test_remember_keeps_the_last_value_read_for_each_field(
+    known: ListingValues | None, current: Listing, expected: ListingValues | None
+):
+    assert remember(known, current) == expected

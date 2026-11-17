@@ -29,9 +29,11 @@ class PollRepository(Protocol):
     async def save_poll(self, competitor_id: CompetitorId, result: PollResult) -> bool:
         """Stores a poll as the competitor's newest snapshot, with whether it changed anything.
 
-        The poll is compared with the competitor's earlier snapshots; a change also becomes the
-        competitor's last change. The competitor's row is locked while saving, so saves of the
-        same competitor run one after the other and each one compares with the one before it.
+        The poll is compared with the last value read for each field, even if the polls since
+        could not read it; the fields it read become the new last known values, and a change
+        also becomes the competitor's last change. The competitor's row is locked while saving,
+        so saves of the same competitor run one after the other and each one compares with the
+        one before it.
 
         :param competitor_id: The competitor that was polled
         :param result: What the poll found

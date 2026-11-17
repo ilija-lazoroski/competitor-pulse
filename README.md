@@ -25,9 +25,10 @@ The diagram's source is [docs/architecture.drawio](docs/architecture.drawio) (op
   - **Summarizer:** asks the LLM to summarize each pending change, newest first, within the daily
     cap of LLM calls.
   - **Cleaner:** deletes history older than 90 days.
-- **PostgreSQL:** `competitors` (with each one's poll schedule and last change), `snapshots` (one
-  per poll, failed polls included) and `llm_usage` (LLM calls per day, for the cap). The one-shot
-  **migrate** service brings the schema up to date with Alembic before the API and the poller start.
+- **PostgreSQL:** `competitors` (with each one's poll schedule, last change and last known
+  listing), `snapshots` (one per poll, failed polls included) and `llm_usage` (LLM calls per day,
+  for the cap). The one-shot **migrate** service brings the schema up to date with Alembic before
+  the API and the poller start.
 - **The listing source and the LLM** are outside services: Compose starts the provided ones, and
   the poller can be pointed at others (see [Point it at your own source and
   LLM](#point-it-at-your-own-source-and-llm)).
@@ -186,14 +187,16 @@ CP_TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres poet
 - **What counts as a change.** The parser first removes the source's noise (extra fields,
   whitespace, HTML entities, and the many ways to write a price), so two listings that differ only
   in those are equal. A change is then any different value in the title, tagline, price or
-  description, compared with the competitor's latest earlier listing; prices compare as values, so
-  `$29/mo` and `USD 29 per month` are the same. A field the source left out or sent unreadable is
-  unknown, not removed, so an incomplete poll never counts as a change; a failed poll does not
-  either, and does not reset the comparison. A competitor that disappears from the source, or comes
-  back unchanged, is a change with a fixed summary, which costs no LLM call. Every other change
-  waits for the LLM's summary. We considered a threshold for "small" edits (for example a one-word
-  change in the description) and left it out: how much an edit matters is for the summary to say,
-  not a string-similarity number we would have to tune.
+  description, compared with the last value the source sent for that field; prices compare as
+  values, so `$29/mo` and `USD 29 per month` are the same. A field the source left out or sent
+  unreadable is unknown, not removed, so an incomplete poll never counts as a change, and the next
+  poll is still compared with the value read before it (each competitor keeps its last known
+  listing for this); a failed poll does not count either, and does not reset the comparison. A
+  competitor that disappears from the source, or comes back unchanged, is a change with a fixed
+  summary, which costs no LLM call. Every other change waits for the LLM's summary. We considered a
+  threshold for "small" edits (for example a one-word change in the description) and left it out:
+  how much an edit matters is for the summary to say, not a string-similarity number we would have
+  to tune.
 - **The rate limit.** The source allows 5 requests per second for everything together, so one
   rate limiter in the poller spaces all requests evenly, at 4 per second by default for headroom.
   That is also why the poller is its own process, started exactly once, rather than a background

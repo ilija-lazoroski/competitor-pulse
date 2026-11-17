@@ -70,6 +70,10 @@ competitors = Table(
     # Copied from the newest changed snapshot, so the list shows recent changes cheaply.
     Column("last_changed_at", DateTime(timezone=True)),
     Column("next_poll_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
+    # The last value the source sent for each listing field (ListingValues), so a field that
+    # one poll could not read is still compared with the value before it. NULL until a poll
+    # reads any field.
+    Column("known_listing", JsonbOrNull),
     # Partial: the poller only looks for tracked competitors that are due.
     Index(
         "ix_competitors_next_poll_at",

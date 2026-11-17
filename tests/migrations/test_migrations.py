@@ -5,10 +5,12 @@ from alembic import command
 from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
-from sqlalchemy import Engine, inspect, text
+from sqlalchemy import Engine, inspect, select, text
 from sqlalchemy.exc import IntegrityError
 
 from competitor_pulse.tables import competitors, metadata, snapshots
+
+BEFORE_KNOWN_LISTING = "8fefdc6737e2"
 
 COMPETITOR_ID = "acme-crm"
 OK_SNAPSHOT: dict[str, Any] = {
@@ -186,3 +188,53 @@ def test_downgrade_drops_prices_the_old_schema_cannot_hold(
     with migrated_engine.connect() as connection:
         prices = connection.execute(text("SELECT price_amount::text FROM snapshots ORDER BY id"))
         assert prices.scalars().all() == ["29.00", None, None]
+
+
+def test_upgrade_fills_the_known_listing_with_the_last_value_read_for_each_field(
+    alembic_config: Config, migrated_engine: Engine
+):
+    command.downgrade(alembic_config, BEFORE_KNOWN_LISTING)
+    insert_snapshot(migrated_engine, price_unit="seat")
+    unread = {"title": None, "tagline": None, "price_amount": None, "price_currency": None}
+    with migrated_engine.begin() as connection:
+        connection.execute(
+            snapshots.insert(),
+            [
+                # Newer: the price could not be read, the title changed.
+                {
+                    **OK_SNAPSHOT,
+                    "outcome": "incomplete",
+                    "error": {"kind": "incomplete", "message": "Missing", "fields": ["price"]},
+                    "title": "Acme CRM Pro",
+                    "price_amount": None,
+                    "price_currency": None,
+                    "price_period": None,
+                },
+                # Newest: a failed poll reads nothing.
+                {
+                    **OK_SNAPSHOT,
+                    **unread,
+                    "outcome": "failed",
+                    "error": {"kind": "timeout", "message": "Timed out", "after_seconds": 10},
+                    "price_period": None,
+                    "description": None,
+                    "summary_status": "poll_failed",
+                },
+            ],
+        )
+        connection.execute(competitors.insert().values(id="never-polled"))
+
+    command.upgrade(alembic_config, "head")
+
+    with migrated_engine.connect() as connection:
+        rows = connection.execute(select(competitors.c.id, competitors.c.known_listing))
+        known: dict[str, Any] = dict(rows.tuples().all())
+    assert known == {
+        COMPETITOR_ID: {
+            "title": "Acme CRM Pro",
+            "tagline": "Simple CRM for small teams",
+            "price": {"amount": "29.00", "currency": "USD", "period": "month", "unit": "seat"},
+            "description": "Track leads and deals in one place.",
+        },
+        "never-polled": None,
+    }
