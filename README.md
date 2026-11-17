@@ -23,8 +23,8 @@ export CP_CONFIG_PATH=.env
 docker compose up --build
 ```
 
-This starts PostgreSQL, runs the migrations (`alembic upgrade head`) once, then starts the API on
-<http://localhost:8080>, the poller, the listing source on <http://localhost:4002> and the mock LLM
+This starts PostgreSQL, runs the migrations (`alembic upgrade head`) once, then starts the UI on
+<http://localhost:3000>, the API on <http://localhost:8080>, the poller, the listing source on <http://localhost:4002> and the mock LLM
 on <http://localhost:4001>. The poller is a separate process and must run only once, because it
 owns the source's rate limit. Compose sets the database URL for the API itself; other settings come from
 `.env` if it exists. If port 5432 is taken on your machine, set `POSTGRES_PORT`, for example
@@ -54,6 +54,20 @@ Summaries come from any LLM with an OpenAI-compatible Chat Completions API
 
 At most `CP_LLM_DAILY_CAP` calls (default 2,000) are made per UTC day; see
 [CONFIGURATION.md](CONFIGURATION.md) for the timeouts, retries and the other settings.
+
+## Frontend
+
+The React app is in `frontend/` (Vite, TypeScript, React Router). It needs Node 22.12 or newer
+(`frontend/.nvmrc` says 24). In Docker, nginx serves it and forwards `/api` to the API; in
+development the Vite dev server does the same, to `http://localhost:8080` unless
+`CP_FRONTEND_API_URL` says otherwise:
+
+```bash
+cd frontend
+npm ci
+npm run dev     # http://localhost:5173
+npm test
+```
 
 ## Tests
 

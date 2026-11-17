@@ -107,6 +107,11 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
   more than one line are stored as `llm_unusable`.
 - Snapshots in the API have `changes`: each changed field's old and new
   value, formatted, so a change is visible without a summary.
+- Frontend skeleton in `frontend/`: React with Vite, TypeScript and React
+  Router, a typed client for the API, and placeholder pages for the
+  competitor list and timeline. The `frontend` service in Docker Compose
+  serves it on <http://localhost:3000> with nginx, which forwards `/api`
+  to the API.
 
 ### Changed
 

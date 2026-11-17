@@ -87,6 +87,25 @@ services:
         condition: service_completed_successfully
         required: false
 
+  # The React app; nginx serves it and forwards /api to the API.
+  frontend:
+    <<: *hardening
+    build:
+      context: ./frontend
+    image: competitor-pulse-frontend:local
+    ports:
+      - "127.0.0.1:3000:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      start_interval: 1s
+      retries: 3
+
   # Provided by the assignment (assets/files/listing-source), run as is.
   listing-source:
     <<: *hardening
