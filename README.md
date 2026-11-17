@@ -151,6 +151,16 @@ CP_TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres poet
   for now, so a check when adding could not tell them apart; it would also put a slow,
   rate-limited source in the path of the request. The first poll records `not_found`, and the
   timeline shows it. A typo is therefore noticed after the first poll, not when it is added.
+- **Reading the source.** The brief asks to treat the source as an outside website, so its formats
+  were learned by probing it over HTTP, never from its `listings.json`: 1,240 requests over every
+  competitor and version, with its noise, format variants, partial listings and errors switched on.
+  That showed the same values in many forms (whitespace, `&nbsp;`, 39 strings for 10 prices) and
+  the parser turns them into one: text is cleaned, and a price becomes an amount, a currency, a
+  period and a unit (`seat`, or any short unit word; none for a flat price), with `Free` and `$0/mo`
+  as one free price. Over all 1,240 responses, every competitor version parsed to exactly one
+  listing. What the parser cannot read is never guessed: the field counts as missing and the poll
+  as `incomplete`. We first had the unit as a fixed list (`flat`, `seat`) and kept it as text
+  instead, because the evaluation uses other data that may have other units.
 - **What counts as a change.** The parser first removes the source's noise (extra fields,
   whitespace, HTML entities, and the many ways to write a price), so two listings that differ only
   in those are equal. A change is then any different value in the title, tagline, price or
@@ -162,6 +172,32 @@ CP_TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres poet
   waits for the LLM's summary. We considered a threshold for "small" edits (for example a one-word
   change in the description) and left it out: how much an edit matters is for the summary to say,
   not a string-similarity number we would have to tune.
+- **The rate limit.** The source allows 5 requests per second for everything together, so one
+  rate limiter in the poller spaces all requests evenly, at 4 per second by default for headroom.
+  That is also why the poller is its own process, started exactly once, rather than a background
+  task in the API, where every API worker would have started its own poller and its own limiter. A
+  429 pauses every request for its `Retry-After`, and the competitor goes back in the queue without
+  a snapshot, since the poll never happened. The source client never retries on its own: every
+  retry spends the same shared budget, so a failed poll is stored as failed and the competitor waits
+  for its next turn.
+- **How the history is stored.** One `snapshots` row per poll, failed and incomplete polls
+  included, because the timeline must show them. A row has the listing as typed columns (the price
+  as amount, currency, period and unit) and the error, the changes and the LLM's error as `jsonb`
+  checked by Pydantic models; check constraints keep each row consistent (for example, an `ok` poll
+  has no error, and a summary exists exactly when its status is `ready`). Removing a competitor only
+  marks it removed: polling stops, the history stays for its 90 days, and adding the same id again
+  continues the same timeline. We considered storing each listing once per version, with polls as
+  small rows pointing to it (smaller, see the production numbers below), and deleting history on
+  removal; one row per poll maps one to one onto the API and keeps the code simple at this size.
+- **Scheduling and running at the same time as the API.** Each competitor has a `next_poll_at`. The
+  poller claims due competitors with `FOR UPDATE SKIP LOCKED` and moves their next poll one interval
+  ahead in the same statement, so a competitor is never claimed twice, and a crash costs one missed
+  poll, not a burst of repeats. Saving a poll locks the competitor's row: a poll of a competitor
+  removed in the meantime is dropped, and two saves of the same competitor (possible when it is
+  removed and added back while a poll is under way) run one after the other, so the second compares
+  with the first and a change is never reported, or summarized, twice. Paging the timeline uses
+  `(fetched_at, id)` as a cursor, so new polls arriving while a user pages never cause gaps or
+  repeats.
 - **The LLM and its daily cap.** A change is stored as `pending` before the LLM is asked, so a
   slow or failing LLM never loses a poll; the summarizer runs next to the poller and takes the
   newest changes first, because they matter most when there is a backlog. Each call is reserved
@@ -292,6 +328,39 @@ Where we bent the pattern, on purpose:
   pure logic in `poller/change_detection.py`, but the repository calls it, because it has to run
   under the competitor's row lock: two saves of the same competitor must not both see "changed".
   A cleaner split would need the lock (a unit of work) to be part of the port.
+
+## Left out on purpose
+
+- **Authentication:** the brief has one internal user.
+- **More than one poller:** it would need the rate limiter shared through PostgreSQL or Redis, and
+  would not raise the source's limit (see the production numbers).
+- **Early retries of failed polls:** a failed poll waits for its next turn, because every retry
+  spends the shared request budget.
+- **Polling by how often a competitor changes, one LLM call for several changes, monthly
+  partitions:** the next steps in the production numbers.
+- **A threshold for "small" changes:** see what counts as a change.
+- **Retrying changes that hit the daily LLM cap:** the next day's budget goes to new changes; the
+  old ones still show their old and new values.
+- **Native clients for LLM APIs that are not OpenAI-compatible,** such as Anthropic's: one more
+  `LlmClient` adapter (see ports and adapters).
+- **Metrics and alerts,** for example on failed polls, the request rate and the LLM budget: the
+  services write structured logs, but nothing collects them.
+- **End-to-end browser tests:** the frontend has unit tests for its logic; the API and the
+  repositories are tested in Python.
+- **A cloud deployment** (a bonus point in the brief).
+
+## AI tools
+
+Used **Claude Code** (Claude Opus 5.5) on which I decided what tech stack we are using
+and the actual architecture that is going to be used.
+
+On implementation of what I have purposed there was something that I have changed and that was:
+**the repositories.** It first put the poller's methods (claiming due competitors, saving polls)
+into the API's `CompetitorRepository`, arguing that saving a poll touches both tables. I had
+it split into one repository per consumer: the API, the poller, the summarizer and the cleaner
+each depend on their own port with only the methods they use. The transaction argument did not hold,
+because a single method can still cover both tables; and the split removed methods that each side
+must never call, and the API settings the poller had to pass in only to build the shared repository.
 
 ## Development setup
 
