@@ -105,7 +105,9 @@ class PostgresPollRepository(PollRepository):
                 snapshots.c.competitor_id == competitor_id,
                 snapshots.c.outcome.in_([*_LISTING_OUTCOMES, PollOutcome.NOT_FOUND]),
             )
-            .order_by(snapshots.c.id.desc())
+            # The timeline index's order: it finds the competitor's newest rows directly. By id
+            # alone, PostgreSQL walks the primary key back through every competitor's rows.
+            .order_by(snapshots.c.fetched_at.desc(), snapshots.c.id.desc())
             .limit(1)
         )
         return outcome == PollOutcome.NOT_FOUND
