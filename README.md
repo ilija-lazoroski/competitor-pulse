@@ -8,7 +8,6 @@ set. Settings come from `CP_*` environment variables, or from a `.env` file whos
 
 All options, with their defaults and which ones are required, are listed in
 [CONFIGURATION.md](CONFIGURATION.md).
-```
 
 Or start from the example file, which has the local development values:
 
@@ -29,6 +28,36 @@ on <http://localhost:4001>. The poller is a separate process and must run only o
 owns the source's rate limit. Compose sets the database URL for the API itself; other settings come from
 `.env` if it exists. If port 5432 is taken on your machine, set `POSTGRES_PORT`, for example
 `POSTGRES_PORT=55432 docker compose up --build`.
+
+## Point it at your own source and LLM
+
+Docker Compose starts the provided listing source and mock LLM, and the poller uses them unless
+two settings say otherwise. Set them on the command line, or in a `.env` file next to
+`docker-compose.yaml` (Compose reads it):
+
+```bash
+CP_SOURCE_BASE_URL=https://your-source.example \
+CP_LLM_BASE_URL=https://your-llm.example/v1 \
+docker compose up --build
+```
+
+- **Listing source:** `CP_SOURCE_BASE_URL` is the base URL; listings are read from
+  `<CP_SOURCE_BASE_URL>/listings/<id>`. `CP_SOURCE_TIMEOUT_SECONDS` (default 10) is how long one
+  request may take.
+- **LLM:** `CP_LLM_BASE_URL` is an OpenAI-compatible API, usually ending in `/v1`; summaries are
+  requested from `<CP_LLM_BASE_URL>/chat/completions`. Set `CP_LLM_MODEL` to the model to ask, and
+  `CP_LLM_API_KEY` if it needs a key (sent as a bearer token). See [Which LLM](#which-llm).
+- **An instance on the same machine as Docker:** inside the containers `localhost` is the
+  container itself, so use `host.docker.internal` instead, for example
+  `CP_SOURCE_BASE_URL=http://host.docker.internal:4002`; Compose maps that name on Linux too. A host
+  firewall must let Docker's networks reach that port; when it does not, every poll fails with
+  "The source did not answer within 10s".
+- **Without Docker:** the same settings, as environment variables or in the file at
+  `CP_CONFIG_PATH`.
+
+The provided source and mock LLM still start, but nothing calls them. The timeline shows whether the
+new instances answer: a poll the source does not answer is stored with the reason, and so is a
+summary the LLM does not give.
 
 ## Which LLM
 

@@ -120,6 +120,11 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 
 ### Fixed
 
+- A `.env` copied from `.env.example` pointed the poller in Docker Compose
+  at `localhost` for the source and the LLM, so every poll failed; those
+  lines are now commented out. A source or LLM on the host is reachable as
+  `host.docker.internal`, on Linux too.
+
 - Summaries from the mock LLM were all stored as `llm_unusable`: it echoes
   the prompt, and the `<listing_change>` markers counted as HTML. Our own
   markers no longer count; any other markup still makes an answer unusable.
