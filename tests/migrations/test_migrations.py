@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -8,6 +10,7 @@ from alembic.runtime.migration import MigrationContext
 from sqlalchemy import Engine, inspect, select, text
 from sqlalchemy.exc import IntegrityError
 
+from competitor_pulse.configuration import CONFIG_PATH_ENV_KEY
 from competitor_pulse.tables import competitors, metadata, snapshots
 
 BEFORE_KNOWN_LISTING = "8fefdc6737e2"
@@ -44,6 +47,22 @@ def test_migrations_match_the_tables(migrated_engine: Engine):
         differences = compare_metadata(context, metadata)
 
     assert differences == []
+
+
+def test_upgrade_reads_the_database_url_from_the_config_file(
+    alembic_config: Config,
+    engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+):
+    config_file = tmp_path / ".env"
+    config_file.write_text(f"CP_DATABASE_URL={os.environ['CP_DATABASE_URL']}\n")
+    monkeypatch.delenv("CP_DATABASE_URL")
+    monkeypatch.setenv(CONFIG_PATH_ENV_KEY, str(config_file))
+
+    command.upgrade(alembic_config, "head")
+
+    assert {"competitors", "snapshots", "llm_usage"} <= set(inspect(engine).get_table_names())
 
 
 def test_downgrade_removes_everything(alembic_config: Config, migrated_engine: Engine):
