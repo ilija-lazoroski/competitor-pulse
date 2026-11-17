@@ -17,7 +17,9 @@ export function CompetitorTimelinePage() {
 
   return (
     <section className="card">
-      <Link to="/">← Back to competitors</Link>
+      <Link to="/" className="button">
+        ← Back to competitors
+      </Link>
       <h1>{id}</h1>
       {error && <p className="error">{error}</p>}
       <p>{snapshots.length} snapshots</p>

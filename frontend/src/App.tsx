@@ -8,6 +8,7 @@ export function App() {
     <main className="page">
       <header className="page-header">
         <Link to="/" className="brand">
+          <span className="brand-mark" aria-hidden="true" />
           CompetitorPulse
         </Link>
       </header>
