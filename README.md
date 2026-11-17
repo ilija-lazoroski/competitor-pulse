@@ -189,6 +189,55 @@ CP_TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres poet
   marker and system rule, a demanded link, a demanded Markdown list): the model followed none of
   them. This lowers the risk; it does not guarantee a model never misbehaves.
 
+### The production numbers
+
+The brief's production context: 6,000 competitors, each polled every 15 minutes; at most 5
+requests per second to the source; at most 2,000 LLM calls per day; 90 days of history. These do not
+all fit together.
+
+**Polling: 6.7 requests per second are needed, 5 are allowed.** 6,000 competitors every 15 minutes
+is 24,000 requests an hour, 6.7 per second. The poller sends at most `CP_POLLER_REQUESTS_PER_SECOND`
+(4 by default, which leaves room under the source's 5), so a full round over 6,000 competitors takes
+about 25 minutes. Nothing breaks: the poller always takes the most overdue competitors first, so
+every competitor falls behind evenly instead of some never being polled, and a 429 pauses every
+request rather than adding to the overload. What we would do next:
+
+- **Poll by how often a competitor changes.** Most listings change rarely. A competitor whose last
+  change is old can wait an hour; one that changed today, or that a user is looking at, comes back
+  every 15 minutes. With most competitors stable, the busy ones get the 15 minutes the brief asks
+  for within the same budget.
+- **Ask the source for more.** A higher limit, a feed of changed ids, or conditional requests
+  (`ETag`, `If-None-Match`) so an unchanged listing costs almost nothing. The provided source
+  supports none of these.
+- More pollers would not help: the limit is the source's, for all of them together. Scaling out
+  only makes sense for availability, with the rate limiter moved into PostgreSQL or Redis so that
+  all pollers share it.
+
+**LLM calls: 2,000 a day for up to 6,000 competitors.** Only changes that matter are summarized,
+and a competitor that disappears or comes back unchanged gets a fixed summary without a call. Still,
+if a third of the competitors changed every day, the cap would run out. When it does, the newest
+changes have been summarized first, the rest show "the daily LLM limit was reached", and the
+timeline still shows each changed field's old and new value, so nothing is hidden. What we would do
+next:
+
+- **One call per competitor, not per snapshot.** When several changes of one competitor wait, one
+  summary can cover all of them.
+- **Fixed summaries for simple changes.** A price that only went from $39/mo to $29/mo needs no
+  LLM: "The price dropped from $39/mo to $29/mo." The LLM is for changes in text.
+- **A cheaper or local model** where the cap is about cost: with Ollama the cap can go away.
+
+**History: 90 days of every poll.** At 4 requests per second the poller makes about 346,000 polls a
+day, so 90 days are about 31 million snapshots (39 million at the full 5 per second). Measured in
+our database, a snapshot takes about 290 bytes, about 480 with PostgreSQL's row overhead and the
+indexes, so 90 days take about 15 GB: a normal size for PostgreSQL. The timeline reads one
+competitor's newest snapshots through an index, so its speed does not depend on the table's size,
+and the Cleaner deletes what is older than 90 days in short batches. What we would do next:
+
+- **Monthly partitions.** Dropping a month is instant and leaves no work for vacuum, where deleting
+  millions of rows does.
+- **A listing once per version.** Most polls repeat the listing before them. Polls as small rows
+  that point to a listing stored once per change would make the history about four times smaller.
+
 ### Ports and adapters
 
 The code follows the hexagonal architecture (ports and adapters). The logic of each part depends
