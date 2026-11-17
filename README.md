@@ -371,6 +371,11 @@ Where we bent the pattern, on purpose:
 - **A threshold for "small" changes:** see what counts as a change.
 - **Retrying changes that hit the daily LLM cap:** the next day's budget goes to new changes; the
   old ones still show their old and new values.
+- **Protection against an LLM outage:** every failed call counts against the daily cap, and a
+  change whose calls all fail stays `llm_failed`. A long outage can therefore use up the day's cap
+  on failed calls and lose the summaries of the changes made during it. The next step would be a
+  circuit breaker that stops calling after a few failures in a row and tries again later, leaving
+  the changes `pending` meanwhile.
 - **Native clients for LLM APIs that are not OpenAI-compatible,** such as Anthropic's: one more
   `LlmClient` adapter (see ports and adapters).
 - **Metrics and alerts,** for example on failed polls, the request rate and the LLM budget: the
