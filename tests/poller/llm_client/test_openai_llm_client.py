@@ -17,7 +17,7 @@ pytestmark = pytest.mark.anyio
 
 TIMEOUT_SECONDS = 30
 MAX_TOKENS = 150
-MAX_ANSWER_CHARS = 80
+MAX_ANSWER_CHARS = 300
 
 
 def completion(content: Any, finish_reason: str = "stop") -> dict:
@@ -110,6 +110,9 @@ async def test_connection_error():
         httpx.Response(200, json=completion("Price **dropped** to $29/mo.")),
         httpx.Response(200, json=completion("- Price dropped to $29/mo")),
         httpx.Response(200, json=completion("Price <b>dropped</b> to $29/mo.")),
+        httpx.Response(
+            200, json=completion("<listing_change> Price <b>dropped</b>. </listing_change>")
+        ),
         httpx.Response(200, json=completion("See [the deal](https://acme.example).")),
     ],
 )
@@ -124,6 +127,9 @@ async def test_unusable_answer(response: httpx.Response):
         "The price dropped from $39/mo to $29/mo.",
         'The tagline changed to "Docs <3 teams", and the price is now free.',
         "The price fell 25% - from $39/mo to $29/mo.",
+        # The mock LLM echoes the prompt, markers and all.
+        'Mock AI summary (not a real model). Based on what you sent: "<listing_change> {'
+        ' "competitor": "acme-crm" } </listing_change>"',
     ],
 )
 async def test_plain_summaries_are_accepted(summary: str):

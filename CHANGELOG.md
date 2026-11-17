@@ -119,5 +119,10 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
   `SummaryConnectionError`, `SummaryHttpError` and `SummaryUnusableAnswer`.
 
 ### Fixed
+
+- Summaries from the mock LLM were all stored as `llm_unusable`: it echoes
+  the prompt, and the `<listing_change>` markers counted as HTML. Our own
+  markers no longer count; any other markup still makes an answer unusable.
+
 ### Removed
 ### Security

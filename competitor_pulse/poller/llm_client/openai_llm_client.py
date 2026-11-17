@@ -12,6 +12,7 @@ from competitor_pulse.poller.llm_client.errors import (
     LlmUnusableAnswerError,
 )
 from competitor_pulse.poller.llm_client.llm_client import LlmClient
+from competitor_pulse.poller.summary_prompt import CLOSING_MARKER, OPENING_MARKER
 
 # A summary is shown as plain text: links and markup in an answer mean the model did not do
 # what it was asked, possibly because the listing it was given tried to instruct it.
@@ -134,6 +135,8 @@ class OpenAiLlmClient(LlmClient):
             raise LlmUnusableAnswerError("the answer has more than one line")
         if _LINK.search(answer):
             raise LlmUnusableAnswerError("the answer contains a link")
-        if _MARKUP.search(answer):
+        # An answer may repeat our own data markers, like the mock LLM, which echoes its prompt;
+        # they are not markup a reader could be tricked by, so only other markup counts.
+        if _MARKUP.search(answer.replace(OPENING_MARKER, "").replace(CLOSING_MARKER, "")):
             raise LlmUnusableAnswerError("the answer contains Markdown or HTML")
         return answer
