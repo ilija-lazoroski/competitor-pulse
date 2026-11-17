@@ -2,8 +2,16 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 
 import { listSnapshots, type PollOutcome, type Snapshot } from "../api";
+import { changeLines, type NoteTone, summaryNote } from "../summaryNote";
 
 const dateTime = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "medium" });
+
+const NOTE_ICONS: Record<NoteTone, string> = {
+  summary: "✦",
+  info: "○",
+  waiting: "◷",
+  warning: "!",
+};
 
 // Polls that went wrong get a label; a normal poll needs none.
 const OUTCOME_LABELS: Record<PollOutcome, string | null> = {
@@ -60,6 +68,7 @@ function SnapshotItem({ snapshot }: { snapshot: Snapshot }) {
           {dateTime.format(new Date(snapshot.fetchedAt))}
         </time>
         {outcome && <span className={`badge badge-${snapshot.outcome}`}>{outcome}</span>}
+        {snapshot.changed && <span className="badge badge-changed">Changed</span>}
       </div>
       {hasListing && (
         <div className="listing">
@@ -72,6 +81,42 @@ function SnapshotItem({ snapshot }: { snapshot: Snapshot }) {
         </div>
       )}
       {snapshot.error && <p className="snapshot-error">{snapshot.error}</p>}
+      <ChangeList changes={snapshot.changes} />
+      <SummaryLine snapshot={snapshot} />
     </li>
+  );
+}
+
+function ChangeList({ changes }: { changes: Snapshot["changes"] }) {
+  const lines = changeLines(changes);
+  if (lines.length === 0) {
+    return null;
+  }
+  return (
+    <ul className="change-list">
+      {lines.map((line) => (
+        <li key={line.field} className="change">
+          <span className="change-label">{line.label}</span>
+          <span className="change-old">{line.old}</span>
+          <span className="change-arrow" aria-label="changed to">
+            →
+          </span>
+          <span className="change-new">{line.new}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function SummaryLine({ snapshot }: { snapshot: Snapshot }) {
+  const note = summaryNote(snapshot);
+  return (
+    <p className={`note note-${note.tone}`}>
+      <span className="note-icon" aria-hidden="true">
+        {NOTE_ICONS[note.tone]}
+      </span>
+      {/* Plain text only: the summary comes from an LLM that read untrusted listing text. */}
+      <span>{note.text}</span>
+    </p>
   );
 }
