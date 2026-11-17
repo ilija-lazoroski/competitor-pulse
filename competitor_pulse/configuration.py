@@ -50,6 +50,7 @@ class DatabaseConfiguration(BaseSettings, ServiceKitBaseModel):
 
     @model_validator(mode="after")
     def _max_size_is_not_below_min_size(self) -> Self:
+        """:raises ValueError: If pool_max_size is smaller than pool_min_size"""
         if self.pool_max_size < self.pool_min_size:
             raise ValueError("pool_max_size must not be smaller than pool_min_size")
         return self
@@ -79,6 +80,7 @@ class ApiConfiguration(BaseSettings, ServiceKitBaseModel):
 
     @model_validator(mode="after")
     def _page_size_is_not_above_max_page_size(self) -> Self:
+        """:raises ValueError: If snapshots_page_size is larger than snapshots_max_page_size"""
         if self.snapshots_page_size > self.snapshots_max_page_size:
             raise ValueError("snapshots_page_size must not be larger than snapshots_max_page_size")
         return self
@@ -99,6 +101,11 @@ class CompetitorPulseConfiguration(ServiceConfiguration):
 
 
 def load_configuration() -> CompetitorPulseConfiguration:
+    """Loads the settings from CP_* environment variables and the .env file at CP_CONFIG_PATH.
+
+    :returns: The settings, with the database and API settings as sub-configurations
+    :raises ValidationError: If a setting is missing or invalid
+    """
     config_file_path = None
     if CONFIG_PATH_ENV_KEY in os.environ:
         config_file_path = Path(os.environ[CONFIG_PATH_ENV_KEY])

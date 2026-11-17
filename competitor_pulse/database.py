@@ -11,7 +11,11 @@ from competitor_pulse.configuration import DatabaseConfiguration
 
 
 def to_sqlalchemy_url(database_url: SecretStr) -> URL:
-    """postgresql://… URLs need the psycopg (v3) driver name for SQLAlchemy."""
+    """Turns a postgresql:// URL into the URL SQLAlchemy needs for the psycopg (v3) driver.
+
+    :param database_url: A postgresql://user:password@host/db connection string
+    :returns: The same URL with the postgresql+psycopg driver name
+    """
     return make_url(database_url.get_secret_value()).set(drivername="postgresql+psycopg")
 
 
@@ -35,6 +39,11 @@ class Database:
 
     @classmethod
     def from_configuration(cls, config: DatabaseConfiguration) -> "Database":
+        """Builds the pool and the engine without connecting; open() starts the pool.
+
+        :param config: The database settings
+        :returns: The database, not opened yet
+        """
         pool = AsyncConnectionPool(
             config.url.get_secret_value(),
             min_size=config.pool_min_size,
@@ -53,16 +62,24 @@ class Database:
 
     @property
     def engine(self) -> AsyncEngine:
+        """The engine to run queries on."""
         return self._engine
 
     async def open(self) -> None:
+        """Starts the pool without waiting for a connection, so it works with the database down."""
         await self._pool.open(wait=False)
 
     async def ping(self) -> None:
+        """Checks that the database answers SELECT 1.
+
+        :raises TimeoutError: If the database does not answer in time
+        :raises OperationalError: If the database cannot be reached
+        """
         async with asyncio.timeout(self._ping_timeout_seconds):
             async with self._engine.connect() as connection:
                 await connection.execute(text("SELECT 1"))
 
     async def close(self) -> None:
+        """Closes the engine and every connection in the pool."""
         await self._engine.dispose()
         await self._pool.close()

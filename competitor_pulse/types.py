@@ -19,6 +19,8 @@ CompetitorId: TypeAlias = Annotated[str, StringConstraints(pattern=COMPETITOR_ID
 
 
 class PollOutcome(StrEnum):
+    """What a poll of the source returned."""
+
     OK = "ok"
     INCOMPLETE = "incomplete"
     NOT_FOUND = "not_found"
@@ -39,12 +41,16 @@ class SummaryStatus(StrEnum):
 
 
 class PricePeriod(StrEnum):
+    """How often a price is paid."""
+
     MONTH = "month"
     YEAR = "year"
     ONE_TIME = "one_time"
 
 
 class ListingField(StrEnum):
+    """The fields of a listing that we keep and compare."""
+
     TITLE = "title"
     TAGLINE = "tagline"
     PRICE = "price"
@@ -52,16 +58,19 @@ class ListingField(StrEnum):
 
 
 class Price(ServiceKitBaseModel):
+    """A price as values, so different formats of the same price compare equal."""
+
     amount: Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=2)]
     currency: Annotated[str, Field(pattern=CURRENCY_PATTERN)]
     period: PricePeriod
 
 
 class FieldChange(ServiceKitBaseModel):
+    """A listing field's value before and after a change."""
+
     old: str | Price | None
     new: str | Price | None
 
 
-# snapshots.changes: what changed, per field.
 Changes = dict[ListingField, FieldChange]
 changes_adapter: Final = TypeAdapter(Changes)

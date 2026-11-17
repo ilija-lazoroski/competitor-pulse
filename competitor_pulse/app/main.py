@@ -26,12 +26,24 @@ GIT_STATUS_YAML_PATH: Final[Path] = Path.cwd() / "GIT_STATUS.yaml"
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    """Runs setup() before the app serves requests and teardown() after it stops.
+
+    :param _app: The FastAPI app
+    """
     config = await setup(_app)
     yield
     await teardown(_app, config)
 
 
 async def setup(_app: FastAPI) -> CompetitorPulseConfiguration:
+    """Loads the configuration, configures logging and opens the database.
+
+    The database pool opens without waiting, so the API starts even if the database is down.
+
+    :param _app: The FastAPI app
+    :returns: The loaded configuration
+    :raises ValidationError: If a setting is missing or invalid
+    """
     # Uvicorn forks the process, so the configuration is loaded again here.
     config = load_configuration()
     await bootstrap_logging(_app, config)
@@ -46,6 +58,11 @@ async def setup(_app: FastAPI) -> CompetitorPulseConfiguration:
 
 
 async def teardown(_app: FastAPI, _config: CompetitorPulseConfiguration):
+    """Closes the database and clears the shared objects.
+
+    :param _app: The FastAPI app
+    :param _config: The configuration that setup() loaded
+    """
     logger.info(f"Shutting down {PROJECT_NAME}...")
     await dependencies.database().close()
     dependencies._database = None
@@ -67,4 +84,5 @@ app.include_router(competitors.router)
 
 
 def main():
+    """Starts the API with uvicorn, listening where the configuration says."""
     launch_uvicorn(PROJECT_NAME, ENTRYPOINT, load_configuration())

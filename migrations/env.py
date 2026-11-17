@@ -14,6 +14,10 @@ logging.getLogger("alembic").setLevel(logging.INFO)
 
 
 def run_migrations_online() -> None:
+    """Runs the migrations against the database at CP_DATABASE_URL, in one transaction.
+
+    :raises ValidationError: If a database setting is missing or invalid
+    """
     config = DatabaseConfiguration()  # type: ignore[call-arg]
     engine = create_engine(
         to_sqlalchemy_url(config.url),
@@ -22,7 +26,6 @@ def run_migrations_online() -> None:
     )
 
     with engine.connect() as connection:
-        # `alembic revision --autogenerate` compares the database with these tables.
         context.configure(connection=connection, target_metadata=metadata)
         with context.begin_transaction():
             context.run_migrations()

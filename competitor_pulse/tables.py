@@ -38,7 +38,12 @@ JsonbOrNull: Final = JSONB(none_as_null=True)
 
 
 def _pg_enum(enum: type[StrEnum], name: str) -> ENUM:
-    # Store the values ("not_found"), not the member names ("NOT_FOUND").
+    """Makes a PostgreSQL enum type that stores the values ("not_found"), not the names.
+
+    :param enum: The Python enum
+    :param name: The name of the PostgreSQL type
+    :returns: The column type
+    """
     return ENUM(enum, name=name, values_callable=lambda members: [m.value for m in members])
 
 
@@ -52,10 +57,8 @@ competitors = Table(
     metadata,
     Column("id", Text, primary_key=True),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
-    # Set when the user stops tracking the competitor. Its history stays until the cleaner
-    # removes it; adding the id again clears this and continues the same timeline.
     Column("removed_at", DateTime(timezone=True)),
-    # The newest snapshot with changed = true, so the list can show recent changes cheaply.
+    # Copied from the newest changed snapshot, so the list shows recent changes cheaply.
     Column("last_changed_at", DateTime(timezone=True)),
 )
 
@@ -73,7 +76,6 @@ snapshots = Table(
     Column("fetched_at", DateTime(timezone=True), nullable=False),
     Column("outcome", poll_outcome_type, nullable=False),
     Column("error", JsonbOrNull),
-    # The listing, normalized. NULL when the poll did not return the field.
     Column("title", Text),
     Column("tagline", Text),
     Column("price_amount", Numeric(12, 2)),
@@ -99,19 +101,18 @@ snapshots = Table(
         "(summary_status IN ('llm_failed', 'llm_unusable')) = (summary_error IS NOT NULL)",
         name="summary_error_iff_llm_error",
     ),
-    # The timeline: one competitor's snapshots, newest first, paged by (fetched_at, id).
     Index(
         "ix_snapshots_competitor_id_fetched_at_id",
         "competitor_id",
         text("fetched_at DESC"),
         text("id DESC"),
     ),
-    # The LLM worker's queue: only the few rows that wait for a summary.
+    # Partial: only the few rows that wait for a summary.
     Index(
         "ix_snapshots_pending_summary",
         "fetched_at",
         postgresql_where=text("summary_status = 'pending'"),
     ),
-    # The cleaner deletes by age. Rows arrive in time order, so BRIN stays tiny.
+    # Rows arrive in time order, so a BRIN index on the age stays tiny.
     Index("ix_snapshots_fetched_at_brin", "fetched_at", postgresql_using="brin"),
 )

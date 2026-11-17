@@ -18,10 +18,12 @@ class CompetitorPulseError(StructuredError):
 
 
 class ErrorRecord(ServiceKitBaseModel):
+    """An error stored with a snapshot; `kind` in the subclasses tells which one."""
+
     message: str = Field(description="Readable explanation, shown to the user")
 
 
-# --- snapshots.error: why a poll did not return a complete listing ---
+# Stored in snapshots.error: why a poll did not return a complete listing.
 
 
 class PollTimeout(ErrorRecord):
@@ -64,7 +66,7 @@ PollError = Annotated[
 poll_error_adapter: Final = TypeAdapter(PollError)
 
 
-# --- snapshots.summary_error: why the LLM did not give a summary ---
+# Stored in snapshots.summary_error: why the LLM did not give a summary.
 
 
 class LlmTimeout(ErrorRecord):

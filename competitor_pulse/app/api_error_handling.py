@@ -20,10 +20,17 @@ from competitor_pulse.competitor_repository import (
 
 
 class InvalidPageSizeResponse(APIResponse):
+    """The body of a 422 response to a page size above the maximum."""
+
     message: Annotated[str, Field(examples=["limit must not be larger than 200"])]
 
 
 def register_error_handlers(app: FastAPI):
+    """Registers a handler per application error, then service-kit's default handlers.
+
+    :param app: The FastAPI app to register the handlers on
+    """
+
     @app.exception_handler(CompetitorNotTrackedError)
     async def competitor_not_tracked_handler(request: Request, exc: CompetitorNotTrackedError):
         return handle_structured_error(request, exc, NotFoundResponse, HTTPStatus.NOT_FOUND)

@@ -19,6 +19,8 @@ _tracked = competitors.c.removed_at.is_(None)
 
 
 class PostgresCompetitorRepository:
+    """The CompetitorRepository on PostgreSQL, with SQLAlchemy Core."""
+
     def __init__(self, engine: AsyncEngine, config: ApiConfiguration):
         self._engine = engine
         self._recent_change_window = timedelta(hours=config.recent_change_hours)
@@ -109,7 +111,12 @@ class PostgresCompetitorRepository:
 
     @staticmethod
     async def _lock_tracked(connection: AsyncConnection, competitor_id: CompetitorId) -> None:
-        """Raises if not tracked; otherwise a removal waits until the transaction ends."""
+        """Locks a tracked competitor's row, so a removal waits until the transaction ends.
+
+        :param connection: The connection whose transaction holds the lock
+        :param competitor_id: The competitor to lock
+        :raises CompetitorNotTrackedError: If the competitor is not tracked
+        """
         tracked = await connection.execute(
             select(competitors.c.id)
             .where(competitors.c.id == competitor_id, _tracked)
@@ -120,6 +127,11 @@ class PostgresCompetitorRepository:
 
 
 def _to_snapshot(row: Row) -> Snapshot:
+    """Builds the API's snapshot from a row of the snapshots query.
+
+    :param row: A snapshots row with the error and summary error messages
+    :returns: The snapshot, with the price formatted
+    """
     values = row._mapping
     price = None
     if values["price_amount"] is not None:

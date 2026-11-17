@@ -14,10 +14,14 @@ router = APIRouter(tags=["health"])
 
 
 class HealthResponse(ServiceKitBaseModel):
+    """The body of a successful health check."""
+
     status: Literal["ok"]
 
 
 class UnavailableResponse(ServiceKitBaseModel):
+    """The body of a failed database check."""
+
     status: Literal["unavailable"]
 
 
@@ -27,7 +31,10 @@ class UnavailableResponse(ServiceKitBaseModel):
     responses=get_standard_responses([HTTPStatus.INTERNAL_SERVER_ERROR]),
 )
 async def health() -> HealthResponse:
-    """Returns ok while the API process is up. Does not check the database."""
+    """Answers ok while the API process is up, without checking the database.
+
+    :returns: Status ok
+    """
     return HealthResponse(status="ok")
 
 
@@ -37,7 +44,11 @@ async def health() -> HealthResponse:
     responses={HTTPStatus.SERVICE_UNAVAILABLE: {"model": UnavailableResponse}},
 )
 async def health_db(db: Annotated[Database, Depends(database)]) -> HealthResponse:
-    """Returns ok if the database answers SELECT 1, otherwise 503."""
+    """Checks that the database answers SELECT 1 in time.
+
+    :param db: The shared database
+    :returns: Status ok, or status unavailable with a 503 if the check fails
+    """
     try:
         await db.ping()
     except Exception as err:

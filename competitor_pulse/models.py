@@ -10,7 +10,8 @@ from competitor_pulse.types import CompetitorId, PollOutcome, SummaryStatus
 
 
 class ApiModel(ServiceKitBaseModel):
-    # JSON uses camelCase (fetchedAt), as in the brief's contract.
+    """A model whose JSON uses camelCase (fetchedAt), as in the brief's contract."""
+
     model_config = {
         **ServiceKitBaseModel.model_config,
         "alias_generator": to_camel,
@@ -19,6 +20,8 @@ class ApiModel(ServiceKitBaseModel):
 
 
 class Competitor(ApiModel):
+    """A tracked competitor."""
+
     id: CompetitorId
     created_at: datetime
     last_changed_at: datetime | None
@@ -28,6 +31,8 @@ class Competitor(ApiModel):
 
 
 class Snapshot(ApiModel):
+    """One poll of a competitor: the listing it found, or why it found none."""
+
     id: int = Field(description="Pass as `before` to get the next, older page")
     fetched_at: datetime
     outcome: PollOutcome
