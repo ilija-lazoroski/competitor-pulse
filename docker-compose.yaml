@@ -8,6 +8,8 @@ x-hardening: &hardening
 
 x-backend: &backend
   <<: *hardening
+  # Long-running services come back after a crash; the one-shot migrate overrides this.
+  restart: unless-stopped
   build:
     context: .
   image: competitor-pulse:local
@@ -30,6 +32,7 @@ x-backend: &backend
 services:
   db:
     image: postgres:17.11-alpine@sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -96,6 +99,7 @@ services:
     build:
       context: ./frontend
     image: competitor-pulse-frontend:local
+    restart: unless-stopped
     ports:
       - "127.0.0.1:3000:8080"
     depends_on:
@@ -113,6 +117,7 @@ services:
   listing-source:
     <<: *hardening
     image: node:24.22.1-trixie-slim@sha256:43b9ba1142b8dcf33fa8f922ca1be85714adc444e0586c7cf7726daaeabc1bea
+    restart: unless-stopped
     user: node
     working_dir: /srv
     command: ["node", "listing-source-server.mjs"]
@@ -138,6 +143,7 @@ services:
   mock-llm:
     <<: *hardening
     image: python:3.14.9-slim-trixie@sha256:35caba83af2fe6da9a5d922f9b0156f21d1246a48278c58a08bd253303ba42e8
+    restart: unless-stopped
     user: "65534:65534"
     working_dir: /srv
     command: ["python", "mock-llm-server.py"]
@@ -154,6 +160,7 @@ services:
   ollama:
     image: ollama/ollama:0.13.0@sha256:d4188c1dfa870386a14e299976aed96daeb83876b69e1a852c9d09ea76463b9f
     profiles: [ollama]
+    restart: unless-stopped
     volumes:
       - ollama-models:/root/.ollama
     ports:
