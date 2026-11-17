@@ -65,6 +65,9 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
   source sent while probing it (`$29/mo`, `USD 29 per month`, `€8 / seat /
   month`, `Free`, ...) into one value, with amounts always in cents. Fields
   that are missing, empty or unreadable are listed as missing.
+- Source settings: `CP_SOURCE_BASE_URL` (default `http://localhost:4002`;
+  `http://listing-source:4002` in Docker Compose) and
+  `CP_SOURCE_TIMEOUT_SECONDS` (default `10`).
 
 ### Changed
 ### Fixed

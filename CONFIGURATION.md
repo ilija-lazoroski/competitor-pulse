@@ -132,4 +132,16 @@ Snapshots per page when the request gives no limit
 *Optional*, default value: `200`
 
 Most snapshots a request may ask for (limit)
+
+## `CP_SOURCE_BASE_URL`
+
+*Optional*, default value: `http://localhost:4002/`
+
+Where the listing source runs; listings come from <base_url>/listings/<id>
+
+## `CP_SOURCE_TIMEOUT_SECONDS`
+
+*Optional*, default value: `10`
+
+How long one request to the source may take, from connecting to the last byte
 <!-- options-end -->

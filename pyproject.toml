@@ -12,6 +12,7 @@ dependencies = [
     "psycopg[binary] (>=3.3,<4.0)",
     "psycopg-pool (>=3.3,<4.0)",
     "alembic (>=1.20,<2.0)",
+    "httpx2 (>=2.16,<3.0)",
 ]
 description = "System for tracking competitor product listings over time."
 dynamic = ["readme"]
@@ -99,7 +100,6 @@ pytest = ">=7.1.0, <8.0.0"
 pytest-cov = ">=3.0.0, <4.0.0"
 pytest-xdist = ">=3.3.1"
 vulture = "2.13"
-httpx2 = "^2.16"
 flake8-tidy-imports = "4.12.0"
 settings-doc = "^4.3.2"
 

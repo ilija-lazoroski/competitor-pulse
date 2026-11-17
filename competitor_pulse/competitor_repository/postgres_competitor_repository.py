@@ -4,7 +4,8 @@ from sqlalchemy import Row, false, func, select, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
-from competitor_pulse.competitor_repository.competitor_repository import (
+from competitor_pulse.competitor_repository.competitor_repository import CompetitorRepository
+from competitor_pulse.competitor_repository.errors import (
     CompetitorAlreadyTrackedError,
     CompetitorNotTrackedError,
     InvalidPageSizeError,
@@ -18,7 +19,7 @@ from competitor_pulse.types import CompetitorId, Price
 _tracked = competitors.c.removed_at.is_(None)
 
 
-class PostgresCompetitorRepository:
+class PostgresCompetitorRepository(CompetitorRepository):
     """The CompetitorRepository on PostgreSQL, with SQLAlchemy Core."""
 
     def __init__(self, engine: AsyncEngine, config: ApiConfiguration):

@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import Final, Self
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import AnyHttpUrl, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from service_kit import ServiceKitBaseModel
 from service_kit.configuration import ServiceConfiguration
@@ -86,6 +86,27 @@ class ApiConfiguration(BaseSettings, ServiceKitBaseModel):
         return self
 
 
+class SourceConfiguration(BaseSettings, ServiceKitBaseModel):
+    """Settings of the listing source from CP_SOURCE_* environment variables."""
+
+    model_config = SettingsConfigDict(
+        env_parse_none_str="None",
+        env_prefix="CP_SOURCE_",
+        extra="ignore",
+        hide_input_in_errors=True,
+    )
+
+    base_url: AnyHttpUrl = Field(
+        default=AnyHttpUrl("http://localhost:4002"),
+        description="Where the listing source runs; listings come from <base_url>/listings/<id>",
+    )
+    timeout_seconds: float = Field(
+        default=10,
+        gt=0,
+        description="How long one request to the source may take, from connecting to the last byte",
+    )
+
+
 class CompetitorPulseConfiguration(ServiceConfiguration):
     """Settings come from CP_* environment variables or the .env file at CP_CONFIG_PATH."""
 
@@ -98,12 +119,13 @@ class CompetitorPulseConfiguration(ServiceConfiguration):
 
     database: DatabaseConfiguration = Field(description="The PostgreSQL settings")
     api: ApiConfiguration = Field(description="The competitor API settings")
+    source: SourceConfiguration = Field(description="The listing source settings")
 
 
 def load_configuration() -> CompetitorPulseConfiguration:
     """Loads the settings from CP_* environment variables and the .env file at CP_CONFIG_PATH.
 
-    :returns: The settings, with the database and API settings as sub-configurations
+    :returns: The settings, with the database, API and source settings as sub-configurations
     :raises ValidationError: If a setting is missing or invalid
     """
     config_file_path = None
@@ -113,6 +135,10 @@ def load_configuration() -> CompetitorPulseConfiguration:
 
     database = DatabaseConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
     api = ApiConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
+    source = SourceConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
     return CompetitorPulseConfiguration(
-        _env_file=config_file_path, database=database, api=api  # type: ignore[call-arg]
+        _env_file=config_file_path,
+        database=database,
+        api=api,
+        source=source,  # type: ignore[call-arg]
     )

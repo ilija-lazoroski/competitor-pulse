@@ -17,6 +17,7 @@ x-backend: &backend
   environment: &backend-environment
     CP_DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-competitor_pulse}
     CP_PRETTY_PRINT_LOGS: "false"
+    CP_SOURCE_BASE_URL: ${CP_SOURCE_BASE_URL:-http://listing-source:4002}
 
 services:
   db:

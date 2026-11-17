@@ -26,6 +26,10 @@ class ErrorRecord(ServiceKitBaseModel):
 # Stored in snapshots.error: why a poll did not return a complete listing.
 
 
+class PollNotFound(ErrorRecord):
+    kind: Literal["not_found"] = "not_found"
+
+
 class PollTimeout(ErrorRecord):
     kind: Literal["timeout"] = "timeout"
     after_seconds: float
@@ -55,7 +59,8 @@ class PollIncomplete(ErrorRecord):
 
 
 PollError = Annotated[
-    PollTimeout
+    PollNotFound
+    | PollTimeout
     | PollConnectionError
     | PollHttpError
     | PollRateLimited
