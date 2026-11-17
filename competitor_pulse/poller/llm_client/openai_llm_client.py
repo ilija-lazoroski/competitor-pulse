@@ -1,3 +1,4 @@
+import asyncio
 import re
 from http import HTTPStatus
 from typing import Any, Final
@@ -94,8 +95,11 @@ class OpenAiLlmClient(LlmClient):
             "max_tokens": self._max_tokens,
         }
         try:
-            response = await self._client.post("chat/completions", json=request)
-        except httpx.TimeoutException as err:
+            # httpx's own timeout applies to each phase (connect, every read, ...), so an LLM
+            # that sends its answer slowly could take far longer; this bounds the whole call.
+            async with asyncio.timeout(self._timeout_seconds):
+                response = await self._client.post("chat/completions", json=request)
+        except (httpx.TimeoutException, TimeoutError) as err:
             raise LlmTimeoutError(self._timeout_seconds) from err
         except httpx.RequestError as err:
             # Every other way the request can fail (connection, protocol, decoding, ...).

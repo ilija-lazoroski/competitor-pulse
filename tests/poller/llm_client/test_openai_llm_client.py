@@ -1,5 +1,6 @@
+import asyncio
 import json
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from typing import Any
 
 import httpx2 as httpx
@@ -85,6 +86,25 @@ async def test_timeout():
         await fail_with(httpx.ReadTimeout("no answer")).complete("", "")
 
     assert err.value.after_seconds == TIMEOUT_SECONDS
+
+
+async def test_timeout_bounds_the_whole_call():
+    # Each chunk arrives quickly, so no single read times out, but the whole answer is late.
+    async def slow_body() -> AsyncIterator[bytes]:
+        for _ in range(10):
+            await asyncio.sleep(0.02)
+            yield b" "
+
+    http = httpx.AsyncClient(
+        base_url="http://llm.test/v1/",
+        transport=httpx.MockTransport(lambda _request: httpx.Response(200, content=slow_body())),
+    )
+    llm = OpenAiLlmClient(http, "mock-llm", 0.05, MAX_TOKENS, MAX_ANSWER_CHARS)
+
+    with pytest.raises(LlmTimeoutError) as err:
+        await llm.complete("", "")
+
+    assert err.value.after_seconds == 0.05
 
 
 @pytest.mark.parametrize(

@@ -1,4 +1,5 @@
-from collections.abc import Callable
+import asyncio
+from collections.abc import AsyncIterator, Callable
 from decimal import Decimal
 
 import httpx2 as httpx
@@ -128,6 +129,24 @@ async def test_timeout():
         await fail_with(httpx.ReadTimeout("no answer")).fetch("acme-crm")
 
     assert err.value.after_seconds == TIMEOUT_SECONDS
+
+
+async def test_timeout_bounds_the_whole_request():
+    # Each chunk arrives quickly, so no single read times out, but the whole answer is late.
+    async def slow_body() -> AsyncIterator[bytes]:
+        for _ in range(10):
+            await asyncio.sleep(0.02)
+            yield b" "
+
+    client = httpx.AsyncClient(
+        base_url="http://source.test",
+        transport=httpx.MockTransport(lambda _request: httpx.Response(200, content=slow_body())),
+    )
+
+    with pytest.raises(SourceTimeoutError) as err:
+        await HttpListingSource(client, 0.05).fetch("acme-crm")
+
+    assert err.value.after_seconds == 0.05
 
 
 @pytest.mark.parametrize(

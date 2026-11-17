@@ -221,7 +221,7 @@ Sent as a bearer token, if the LLM needs one
 
 *Optional*, default value: `60`
 
-How long one call to the LLM may take
+How long one call to the LLM may take, from connecting to the last byte
 
 ## `CP_LLM_MAX_ATTEMPTS`
 

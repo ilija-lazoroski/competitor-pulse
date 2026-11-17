@@ -192,7 +192,9 @@ class LlmConfiguration(BaseSettings, ServiceKitBaseModel):
         default=None, description="Sent as a bearer token, if the LLM needs one"
     )
     timeout_seconds: float = Field(
-        default=60, gt=0, description="How long one call to the LLM may take"
+        default=60,
+        gt=0,
+        description="How long one call to the LLM may take, from connecting to the last byte",
     )
     max_attempts: int = Field(
         default=3, ge=1, description="Calls per change before its summary counts as failed"

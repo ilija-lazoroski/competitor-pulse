@@ -1,3 +1,4 @@
+import asyncio
 from http import HTTPStatus
 
 import httpx2 as httpx
@@ -52,8 +53,11 @@ class HttpListingSource(ListingSource):
         :raises SourceInvalidBodyError: If the source answers 200 without a JSON object
         """
         try:
-            response = await self._client.get(f"/listings/{competitor_id}")
-        except httpx.TimeoutException as err:
+            # httpx's own timeout applies to each phase (connect, every read, ...), so a source
+            # that sends its answer slowly could take far longer; this bounds the whole request.
+            async with asyncio.timeout(self._timeout_seconds):
+                response = await self._client.get(f"/listings/{competitor_id}")
+        except (httpx.TimeoutException, TimeoutError) as err:
             raise SourceTimeoutError(self._timeout_seconds) from err
         except httpx.RequestError as err:
             # Every other way the request can fail (connection, protocol, decoding, ...).
