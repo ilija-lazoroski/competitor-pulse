@@ -62,15 +62,23 @@ class Poller:
     async def poll(self, competitor_id: CompetitorId) -> None:
         """Fetches one competitor's listing and stores what happened as a snapshot.
 
-        A 429 is not stored: the competitor goes back in the queue and every request pauses.
+        A 429 is not stored: the competitor goes back in the queue and every request pauses, for
+        the Retry-After but at most the configured maximum.
 
         :param competitor_id: The competitor to poll
         """
         try:
             listing = await self._source.fetch(competitor_id)
         except SourceRateLimitedError as err:
-            pause = err.retry_after_seconds or self._config.rate_limited_pause_seconds
-            logger.warning("The source is rate limiting; pausing", pause_seconds=pause)
+            pause = min(
+                err.retry_after_seconds or self._config.rate_limited_pause_seconds,
+                self._config.max_rate_limited_pause_seconds,
+            )
+            logger.warning(
+                "The source is rate limiting; pausing",
+                pause_seconds=pause,
+                retry_after_seconds=err.retry_after_seconds,
+            )
             self._limiter.pause(pause)
             await self._repository.requeue(competitor_id)
             return

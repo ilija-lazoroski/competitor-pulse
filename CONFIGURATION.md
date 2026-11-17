@@ -181,6 +181,12 @@ How long the poller waits when no competitor is due
 
 How long to pause all requests after a 429 without a usable Retry-After
 
+## `CP_POLLER_MAX_RATE_LIMITED_PAUSE_SECONDS`
+
+*Optional*, default value: `60`
+
+Longest pause after a 429, whatever its Retry-After asks for, so a source that asks for hours cannot stop polling for that long
+
 ## `CP_CLEANER_RETENTION_DAYS`
 
 *Optional*, default value: `90`

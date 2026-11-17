@@ -10,6 +10,7 @@ from competitor_pulse.configuration import (
     ApiConfiguration,
     CompetitorPulseConfiguration,
     DatabaseConfiguration,
+    PollerConfiguration,
 )
 from competitor_pulse.database import to_sqlalchemy_url
 from competitor_pulse.models import Competitor, Snapshot
@@ -34,6 +35,7 @@ DatabaseConfiguration.model_config
 DatabaseConfiguration._max_size_is_not_below_min_size
 ApiConfiguration.model_config
 ApiConfiguration._page_size_is_not_above_max_page_size
+PollerConfiguration._pause_is_not_above_max_pause
 
 # Route functions are called by FastAPI.
 list_competitors

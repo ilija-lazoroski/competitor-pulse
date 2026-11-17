@@ -27,6 +27,7 @@ CONFIG = PollerConfiguration(
     claim_batch_size=2,
     idle_seconds=0.01,
     rate_limited_pause_seconds=3,
+    max_rate_limited_pause_seconds=60,
 )
 LISTING = Listing(
     title="Acme CRM",
@@ -88,7 +89,7 @@ async def test_source_errors_are_saved_as_snapshots():
     assert outcomes(repository) == {"gone": PollOutcome.NOT_FOUND, "slow": PollOutcome.FAILED}
 
 
-@pytest.mark.parametrize(("retry_after", "pause"), [(5, 5), (None, 3)])
+@pytest.mark.parametrize(("retry_after", "pause"), [(5, 5), (None, 3), (86400, 60)])
 async def test_rate_limited_poll_is_requeued_and_pauses_requests(
     retry_after: float | None, pause: float
 ):

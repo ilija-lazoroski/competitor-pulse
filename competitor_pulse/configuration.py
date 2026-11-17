@@ -144,6 +144,25 @@ class PollerConfiguration(BaseSettings, ServiceKitBaseModel):
         gt=0,
         description="How long to pause all requests after a 429 without a usable Retry-After",
     )
+    max_rate_limited_pause_seconds: float = Field(
+        default=60,
+        gt=0,
+        description=(
+            "Longest pause after a 429, whatever its Retry-After asks for, so a source that"
+            " asks for hours cannot stop polling for that long"
+        ),
+    )
+
+    @model_validator(mode="after")
+    def _pause_is_not_above_max_pause(self) -> Self:
+        """:raises ValueError: If rate_limited_pause_seconds is larger than
+        max_rate_limited_pause_seconds
+        """
+        if self.rate_limited_pause_seconds > self.max_rate_limited_pause_seconds:
+            raise ValueError(
+                "rate_limited_pause_seconds must not be larger than max_rate_limited_pause_seconds"
+            )
+        return self
 
 
 class CleanerConfiguration(BaseSettings, ServiceKitBaseModel):

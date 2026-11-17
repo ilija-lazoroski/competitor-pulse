@@ -76,8 +76,9 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
   in the queue without storing it. Failed polls are not retried early.
 - Poller settings: `CP_POLLER_INTERVAL_SECONDS` (default `900`),
   `CP_POLLER_REQUESTS_PER_SECOND` (`4`), `CP_POLLER_MAX_IN_FLIGHT` (`50`),
-  `CP_POLLER_CLAIM_BATCH_SIZE` (`10`), `CP_POLLER_IDLE_SECONDS` (`1`) and
-  `CP_POLLER_RATE_LIMITED_PAUSE_SECONDS` (`1`).
+  `CP_POLLER_CLAIM_BATCH_SIZE` (`10`), `CP_POLLER_IDLE_SECONDS` (`1`),
+  `CP_POLLER_RATE_LIMITED_PAUSE_SECONDS` (`1`) and
+  `CP_POLLER_MAX_RATE_LIMITED_PAUSE_SECONDS` (`60`).
 - Migration: `competitors.next_poll_at`, the poll schedule. Adding or
   restoring a competitor makes it due at once; claiming moves it one
   interval ahead (`FOR UPDATE SKIP LOCKED`).
@@ -142,6 +143,10 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
   the snapshots' primary key back through every competitor's rows, while
   holding the competitor's lock; it now uses the timeline index (about 10 ms
   down to 0.04 ms on 4 million snapshots).
+
+- A 429 paused all polling for as long as its `Retry-After` asked, so a
+  source answering `Retry-After: 86400` stopped every poll for a day; the
+  pause is now at most `CP_POLLER_MAX_RATE_LIMITED_PAUSE_SECONDS`.
 
 ### Removed
 ### Security

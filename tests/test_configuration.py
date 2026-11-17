@@ -94,3 +94,10 @@ def test_page_size_above_max_page_size_is_rejected(monkeypatch: pytest.MonkeyPat
 
     with pytest.raises(ValidationError, match="snapshots_page_size"):
         load_configuration()
+
+
+def test_rate_limited_pause_above_max_pause_is_rejected(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("CP_POLLER_RATE_LIMITED_PAUSE_SECONDS", "120")
+
+    with pytest.raises(ValidationError, match="rate_limited_pause_seconds"):
+        load_configuration()
