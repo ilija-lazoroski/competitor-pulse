@@ -198,3 +198,74 @@ a:hover {
   color: var(--color-changed);
   background: var(--color-changed-soft);
 }
+
+.notice {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-success);
+  background: #ecfdf3;
+  border-radius: var(--radius-small);
+}
+
+.empty {
+  margin: 0;
+  padding: var(--space-5) 0;
+  text-align: center;
+}
+
+/* --- Competitor list --- */
+
+.track-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.track-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.competitor-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.competitor-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.competitor-main {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.competitor-id {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.competitor-meta {
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .competitor-row {
+    flex-wrap: wrap;
+  }
+
+  .competitor-meta {
+    order: 3;
+    width: 100%;
+  }
+}
