@@ -29,6 +29,20 @@ This starts PostgreSQL, runs the migrations (`alembic upgrade head`) once, then 
 `.env` if it exists. If port 5432 is taken on your machine, set `POSTGRES_PORT`, for example
 `POSTGRES_PORT=55432 docker compose up --build`.
 
+## Tests
+
+```bash
+poetry run pytest
+```
+
+The database tests need a PostgreSQL server where they can create databases; each test gets a new
+database and drops it afterwards. Without `CP_TEST_DATABASE_URL` they are skipped:
+
+```bash
+docker compose up -d db
+CP_TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres poetry run pytest
+```
+
 ## Development setup
 
 Install [pre-commit](https://pre-commit.com) once per machine, then enable the hooks in each clone:

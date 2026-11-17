@@ -40,3 +40,76 @@ _.competitor_id  # type: ignore[name-defined]  # noqa: F821
 
 # Used by migrations/env.py, which vulture does not scan.
 to_sqlalchemy_url
+
+# Step 1 (data model): used by the poller, the LLM worker and the API in the next steps.
+from competitor_pulse.errors import (  # noqa: E402
+    ErrorRecord,
+    LlmConnectionError,
+    LlmHttpError,
+    LlmTimeout,
+    LlmUnusableAnswer,
+    PollConnectionError,
+    PollHttpError,
+    PollIncomplete,
+    PollInvalidBody,
+    PollRateLimited,
+    PollTimeout,
+    poll_error_adapter,
+    summary_error_adapter,
+)
+from competitor_pulse.tables import snapshots  # noqa: E402
+from competitor_pulse.types import (  # noqa: E402
+    FieldChange,
+    ListingField,
+    PollOutcome,
+    Price,
+    PricePeriod,
+    SummaryStatus,
+    changes_adapter,
+)
+
+ListingField.TITLE
+ListingField.TAGLINE
+ListingField.PRICE
+ListingField.DESCRIPTION
+PollOutcome.OK
+PollOutcome.INCOMPLETE
+PollOutcome.NOT_FOUND
+PollOutcome.FAILED
+PricePeriod.MONTH
+PricePeriod.YEAR
+PricePeriod.ONE_TIME
+SummaryStatus.READY
+SummaryStatus.NO_CHANGE
+SummaryStatus.BASELINE
+SummaryStatus.POLL_FAILED
+SummaryStatus.PENDING
+SummaryStatus.LLM_FAILED
+SummaryStatus.LLM_UNUSABLE
+SummaryStatus.CAP_REACHED
+FieldChange.old
+FieldChange.new
+Price.amount
+Price.currency
+Price.period
+ErrorRecord.message
+LlmConnectionError.kind
+LlmHttpError.kind
+LlmHttpError.status
+LlmTimeout.kind
+LlmTimeout.after_seconds
+LlmUnusableAnswer.kind
+PollConnectionError.kind
+PollHttpError.kind
+PollHttpError.status
+PollIncomplete.kind
+PollIncomplete.fields
+PollInvalidBody.kind
+PollRateLimited.kind
+PollRateLimited.retry_after_seconds
+PollTimeout.kind
+PollTimeout.after_seconds
+changes_adapter
+poll_error_adapter
+summary_error_adapter
+snapshots

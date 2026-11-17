@@ -1,5 +1,4 @@
 import asyncio
-from typing import Final
 
 from psycopg import AsyncConnection
 from psycopg_pool import AsyncConnectionPool
@@ -9,11 +8,6 @@ from sqlalchemy.engine import URL, make_url
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from competitor_pulse.configuration import DatabaseConfiguration
-
-CONNECT_TIMEOUT_SECONDS: Final = 5
-# How long a query waits for a free connection before it fails.
-POOL_TIMEOUT_SECONDS: Final = 10
-PING_TIMEOUT_SECONDS: Final = 5
 
 
 def to_sqlalchemy_url(database_url: SecretStr) -> URL:
@@ -29,9 +23,15 @@ class Database:
     instead of closing it.
     """
 
-    def __init__(self, pool: AsyncConnectionPool[AsyncConnection], engine: AsyncEngine):
+    def __init__(
+        self,
+        pool: AsyncConnectionPool[AsyncConnection],
+        engine: AsyncEngine,
+        ping_timeout_seconds: float,
+    ):
         self._pool = pool
         self._engine = engine
+        self._ping_timeout_seconds = ping_timeout_seconds
 
     @classmethod
     def from_configuration(cls, config: DatabaseConfiguration) -> "Database":
@@ -39,28 +39,27 @@ class Database:
             config.url.get_secret_value(),
             min_size=config.pool_min_size,
             max_size=config.pool_max_size,
-            kwargs={"connect_timeout": CONNECT_TIMEOUT_SECONDS},
+            kwargs={"connect_timeout": config.connect_timeout_seconds},
             check=AsyncConnectionPool.check_connection,
-            timeout=POOL_TIMEOUT_SECONDS,
+            timeout=config.pool_timeout_seconds,
+            reconnect_timeout=config.reconnect_timeout_seconds,
             close_returns=True,
             open=False,
         )
         engine = create_async_engine(
             "postgresql+psycopg://", poolclass=NullPool, async_creator=pool.getconn
         )
-        return cls(pool, engine)
+        return cls(pool, engine, config.ping_timeout_seconds)
 
     @property
     def engine(self) -> AsyncEngine:
         return self._engine
 
     async def open(self) -> None:
-        """Starts the pool without waiting, so the API starts even if the database is down."""
         await self._pool.open(wait=False)
 
     async def ping(self) -> None:
-        """Runs SELECT 1; raises if the database cannot be reached in time."""
-        async with asyncio.timeout(PING_TIMEOUT_SECONDS):
+        async with asyncio.timeout(self._ping_timeout_seconds):
             async with self._engine.connect() as connection:
                 await connection.execute(text("SELECT 1"))
 

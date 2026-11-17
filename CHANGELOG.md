@@ -18,6 +18,14 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
   open while idle.
   - `CP_DATABASE_POOL_MAX_SIZE` (default `10`): most connections the pool
   opens; must not be smaller than `CP_DATABASE_POOL_MIN_SIZE`.
+  - `CP_DATABASE_CONNECT_TIMEOUT_SECONDS` (default `5`): how long opening
+  one new connection may take.
+  - `CP_DATABASE_POOL_TIMEOUT_SECONDS` (default `10`): how long a query
+  waits for a free connection when all are busy.
+  - `CP_DATABASE_PING_TIMEOUT_SECONDS` (default `5`): how long
+  `/health/db` waits for the database.
+  - `CP_DATABASE_RECONNECT_TIMEOUT_SECONDS` (default `300`): how long the
+  pool keeps retrying in the background when the database is down.
   - From service-kit: `CP_BIND_ADDRESS` (default `127.0.0.1`), `CP_PORT`
   (`8080`), `CP_WORKERS` (`1`), `CP_ENABLE_HOT_RELOAD` (`false`),
   `CP_DEBUG` (`false`), `CP_LOG_LEVEL` (`INFO`), `CP_LOG_DIRECTORY`
@@ -28,7 +36,7 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
   process is up; does not touch the database.
   - `GET /health/db`: runs `SELECT 1`; `200 {"status": "ok"}`, or
   `503 {"status": "unavailable"}` if the database does not answer
-  within 5 seconds.
+  within `CP_DATABASE_PING_TIMEOUT_SECONDS`.
   - Stubs of the competitor API that answer `501 Not Implemented` for now:
   - `GET /api/competitors`: list tracked competitors.
   - `POST /api/competitors` with `{"id": string}`: start tracking a

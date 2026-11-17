@@ -28,6 +28,25 @@ class DatabaseConfiguration(BaseSettings, ServiceKitBaseModel):
         default=2, ge=0, description="Connections the pool keeps open while idle"
     )
     pool_max_size: int = Field(default=10, ge=1, description="Most connections the pool opens")
+    connect_timeout_seconds: int = Field(
+        default=5, gt=0, description="How long opening one new connection may take"
+    )
+    pool_timeout_seconds: float = Field(
+        default=10,
+        gt=0,
+        description="How long a query waits for a free connection when all are busy",
+    )
+    ping_timeout_seconds: float = Field(
+        default=5, gt=0, description="How long the database check (/health/db) waits for an answer"
+    )
+    reconnect_timeout_seconds: float = Field(
+        default=300,
+        gt=0,
+        description=(
+            "How long the pool keeps retrying in the background when the database cannot be"
+            " reached, before it reports the failure and starts over"
+        ),
+    )
 
     @model_validator(mode="after")
     def _max_size_is_not_below_min_size(self) -> Self:

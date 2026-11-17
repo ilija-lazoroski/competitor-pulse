@@ -6,23 +6,24 @@ from alembic import context
 from sqlalchemy import create_engine, pool
 
 from competitor_pulse.configuration import DatabaseConfiguration
-from competitor_pulse.database import CONNECT_TIMEOUT_SECONDS, to_sqlalchemy_url
+from competitor_pulse.database import to_sqlalchemy_url
+from competitor_pulse.tables import metadata
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)-5.5s [%(name)s] %(message)s")
 logging.getLogger("alembic").setLevel(logging.INFO)
 
 
 def run_migrations_online() -> None:
-    database_url = to_sqlalchemy_url(DatabaseConfiguration().url)  # type: ignore[call-arg]
+    config = DatabaseConfiguration()  # type: ignore[call-arg]
     engine = create_engine(
-        database_url,
+        to_sqlalchemy_url(config.url),
         poolclass=pool.NullPool,
-        connect_args={"connect_timeout": CONNECT_TIMEOUT_SECONDS},
+        connect_args={"connect_timeout": config.connect_timeout_seconds},
     )
 
     with engine.connect() as connection:
-        # The tables (SQLAlchemy Core MetaData) are added with the first schema migration.
-        context.configure(connection=connection, target_metadata=None)
+        # `alembic revision --autogenerate` compares the database with these tables.
+        context.configure(connection=connection, target_metadata=metadata)
         with context.begin_transaction():
             context.run_migrations()
 

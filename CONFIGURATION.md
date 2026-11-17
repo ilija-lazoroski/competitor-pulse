@@ -90,4 +90,28 @@ Connections the pool keeps open while idle
 *Optional*, default value: `10`
 
 Most connections the pool opens
+
+## `CP_DATABASE_CONNECT_TIMEOUT_SECONDS`
+
+*Optional*, default value: `5`
+
+How long opening one new connection may take
+
+## `CP_DATABASE_POOL_TIMEOUT_SECONDS`
+
+*Optional*, default value: `10`
+
+How long a query waits for a free connection when all are busy
+
+## `CP_DATABASE_PING_TIMEOUT_SECONDS`
+
+*Optional*, default value: `5`
+
+How long the database check (/health/db) waits for an answer
+
+## `CP_DATABASE_RECONNECT_TIMEOUT_SECONDS`
+
+*Optional*, default value: `300`
+
+How long the pool keeps retrying in the background when the database cannot be reached, before it reports the failure and starts over
 <!-- options-end -->
