@@ -1,43 +1,66 @@
 # Competitor Pulse
 
-CompetitorPulse tracks competitors' product listings over time. A poller fetches each tracked
-competitor's listing from a listing source, keeps every poll as a snapshot, and decides whether the
-listing changed in a way that matters to a product manager. For each such change an LLM writes a
-short, plain-English summary. A small React app lists the competitors, shows which changed in the
-last 24 hours, and shows each one's history as a timeline, with the summary or the reason there is
-none.
+CompetitorPulse is a system that tracks competitors' product listings over time.
+It tracks a competitor listing from a configured source, storing it in a database, and decides
+whether the listing changed in a way that matters to a product manager. For each change that
+happened a configured LLM writes a short, plain-English summary.
+
+A second part is a small React app that does bare minimum, lists the competitors, shows which
+competitors' listings changed and in what way, their history as timeline and the summary of them.
 
 ## Architecture
 
 ![Architecture](docs/architecture.png)
 
-The diagram's source is [docs/architecture.drawio](docs/architecture.drawio) (open it in draw.io).
-
 - **frontend:** nginx serves the React app and forwards `/api` to the API, so the browser talks to
   one origin.
-- **api:** FastAPI. It adds, removes and lists competitors and reads their snapshots, through the
-  `CompetitorRepository`; it never calls the source or the LLM.
-- **poller:** one process with three tasks, apart from the API so that it runs exactly once,
-  whatever the API's number of workers: there is one rate limit for the source, and this process
-  owns it.
+- **api:** Python FastAPI. It adds, removes and lists competitors and reads their snapshots.
+- **poller** or scheduler is one process with three tasks, out of the API so it runs exactly once.
+  If it were part of the API, every API worker would start its own poller, each with its own rate
+  limiter, and together they would send more than the source allows.
   - **Poller:** claims the competitors that are due, fetches their listings at most 4 requests per
-    second, decides whether each one changed and stores it as a snapshot.
-  - **Summarizer:** asks the LLM to summarize each pending change, newest first, within the daily
-    cap of LLM calls.
+    second (because of production notes), decides whether each one changed and stores it as a snapshot.
+  - **Summarizer:** asks the configured LLM to summarize each pending change, newest first, and stops
+    at the daily LLM cap; the changes left are shown as `cap_reached`.
   - **Cleaner:** deletes history older than 90 days.
 - **PostgreSQL:** `competitors` (with each one's poll schedule, last change and last known
   listing), `snapshots` (one per poll, failed polls included) and `llm_usage` (LLM calls per day,
-  for the cap). The one-shot **migrate** service brings the schema up to date with Alembic before
-  the API and the poller start.
-- **The listing source and the LLM** are outside services: Compose starts the provided ones, and
-  the poller can be pointed at others (see [Point it at your own source and
+  for the cap). Included is the migration service that uses Alembic to take care about schema
+  management before the API and the poller start.
+- **Listing source** which is an outside service that uses a configured service and gets back a
+  listing for a competitor
+- **The LLM** another outside service, any LLM with an OpenAI-compatible API, set by configuration.
+  An API in another format, such as Anthropic's, would need its own `LLMClient` adapter.
+- Both of above can be configured to local instances. (see [Point it at your own source and
   LLM](#point-it-at-your-own-source-and-llm)).
+
+The code follows the [hexagonal architecture](https://devcookies.medium.com/a-detailed-guide-to-hexagonal-architecture-with-examples-042523acb1db) (ports and adapters). The logic of each part depends
+only on **ports**: small `Protocol` classes that say what it needs from the outside world. An
+**adapter** implements a port for one technology: PostgreSQL, HTTP, an LLM API. The logic never
+imports an adapter; the composition roots, `app/dependencies.py` and `poller/main.py`, create the
+adapters and hand them in.
+
+| Port (`Protocol`) | Adapter | Used by | Replaced in tests by |
+|---|---|---|---|
+| `CompetitorRepository` | `PostgresCompetitorRepository` | the API's endpoints | `InMemoryCompetitorRepository` |
+| `PollRepository` | `PostgresPollRepository` | the Poller | `SpyPollRepository` |
+| `SummaryRepository` | `PostgresSummaryRepository` | the Summarizer | `InMemorySummaryRepository` |
+| `RetentionRepository` | `PostgresRetentionRepository` | the Cleaner | `SpyRetentionRepository` |
+| `ListingSource` | `HTTPListingSource` | the Poller | `SpyListingSource` |
+| `LLMClient` | `OpenAILLMClient` | the Summarizer | `SpyLLM` |
+
 
 ## Configuration
 
-Configure the backend before anything else: it does not start until its required settings are
-set. Settings come from `CP_*` environment variables, or from a `.env` file whose path is in
-`CP_CONFIG_PATH`.
+Configuration is a big part of any service and it is written with idea in mind that many things
+are going to be changed in future. With Docker nothing needs to be set first, because Compose sets
+the database URL itself; without Docker this step needs to happen **before running the service**.
+It includes required and optional settings, and it will not start unless all required settings
+are set. There are two ways to set them: via environment file listing all environment variables
+or setting them one by one in your session. Environment variables start with a prefix
+of `CP_` which will separate them from any other settings. For setting up a environment file
+you need to create the `.env` file and set single environment variable named `CP_CONFIG_PATH`
+with the file path of the env file.
 
 All options, with their defaults and which ones are required, are listed in
 [CONFIGURATION.md](CONFIGURATION.md).
@@ -49,24 +72,34 @@ cp .env.example .env
 export CP_CONFIG_PATH=.env
 ```
 
-## Run with Docker
+## Running the application with one command (Docker)
+
+After configuration options are set, there is only one command that needs to be run:
 
 ```bash
 docker compose up --build
 ```
 
-This starts PostgreSQL, runs the migrations (`alembic upgrade head`) once, then starts the UI on
-<http://localhost:3000>, the API on <http://localhost:8080>, the poller, the listing source on <http://localhost:4002> and the mock LLM
-on <http://localhost:4001>. The poller is a separate process and must run only once, because it
-owns the source's rate limit. Compose sets the database URL for the API itself; other settings come from
-`.env` if it exists. If port 5432 is taken on your machine, set `POSTGRES_PORT`, for example
+This will build any needed Docker images and run the containers on your local machine.
+What it does is: starting PostgreSQL along with the migrations (`alembic upgrade head`) once,
+then starts the UI on <http://localhost:3000>, the API on <http://localhost:8080>, the poller,
+the listing source on <http://localhost:4002> and the mock LLM (if not configured otherwise).
+The poller is a separate process and it must be run only once, because it owns the listing source's
+rate limit.
+
+Compose sets the database URL for the API itself; other settings from `.env` if it exists, meaning
+there we need only to have this file next to the compose file before running the command.
+
+Note: If port 5432 is taken on your machine, set `POSTGRES_PORT`, for example
 `POSTGRES_PORT=55432 docker compose up --build`.
 
-## Run without Docker
+## Running the application locally
 
-The backend needs Python 3.14 and [Poetry](https://python-poetry.org), plus a PostgreSQL, the
-listing source and an LLM. The simplest is to start only those three with Compose and run the API
-and the poller from the checkout:
+The backend needs Python 3.14 and [Poetry](https://python-poetry.org) along with local instances of PostgreSQL, the
+listing source and an LLM.
+
+The simplest is to start only those three with Compose and run the API and the poller from the checkout,
+with a mind that you have configured your project beforehand:
 
 ```bash
 docker compose up -d db listing-source mock-llm
@@ -83,6 +116,38 @@ Compose publishes them; without Docker at all, start them with
 `node assets/files/listing-source/listing-source-server.mjs` (Node.js 18 or later) and
 `python3 assets/files/mock-llm/mock-llm-server.py`. For the UI, run the Vite dev server (see
 [Frontend](#frontend)); it forwards `/api` to the API on port 8080.
+
+## Frontend
+
+The React app is in `frontend/` (Vite, TypeScript, React Router). It needs Node 22.12 or newer.
+
+In Docker, nginx serves it and forwards `/api` to the API; in
+development the Vite dev server does the same, to `http://localhost:8080` unless
+`CP_FRONTEND_API_URL` says otherwise:
+
+```bash
+cd frontend
+npm ci
+npm run dev     # http://localhost:5173
+npm test
+```
+
+Both views ask the API again every 15 seconds while the tab is visible, so new polls, and summaries
+that were still pending, appear without a reload.
+
+## Tests
+
+```bash
+poetry run pytest
+```
+
+The database tests need a PostgreSQL server where they can create databases; each test gets a new
+database and drops it afterwards. Without `CP_TEST_DATABASE_URL` they are skipped:
+
+```bash
+docker compose up -d db
+CP_TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres poetry run pytest
+```
 
 ## Point it at your own source and LLM
 
@@ -124,8 +189,7 @@ Summaries come from any LLM with an OpenAI-compatible Chat Completions API
   the timeouts and the failure handling work.
 - **Ollama, locally.** `docker compose --env-file ollama.env --profile ollama up --build` also
   starts Ollama, downloads `llama3.2:1b` once (about 1.3 GB) and uses it. The 1B model runs on a
-  CPU but writes loose summaries; set `CP_LLM_MODEL` (in `ollama.env`) to a larger model, like
-  `llama3.2:3b`, for better ones.
+  CPU but writes loose summaries. You can switch it to a better one with `CP_LLM_MODEL`.
 - **Your own LLM.** Point the poller at it, the same way as at your own listing source:
 
   ```bash
@@ -134,139 +198,107 @@ Summaries come from any LLM with an OpenAI-compatible Chat Completions API
   ```
 
   It has to speak the OpenAI Chat Completions API; Anthropic's own API, for example, would need
-  its own client.
+  its own client, which would be easy with the architecture of the service.
 
 At most `CP_LLM_DAILY_CAP` calls (default 2,000) are made per UTC day; see
 [CONFIGURATION.md](CONFIGURATION.md) for the timeouts, retries and the other settings.
 
-## Frontend
 
-The React app is in `frontend/` (Vite, TypeScript, React Router). It needs Node 22.12 or newer
-(`frontend/.nvmrc` says 24). In Docker, nginx serves it and forwards `/api` to the API; in
-development the Vite dev server does the same, to `http://localhost:8080` unless
-`CP_FRONTEND_API_URL` says otherwise:
+## Decisions, decisions, decisions
 
-```bash
-cd frontend
-npm ci
-npm run dev     # http://localhost:5173
-npm test
-```
+I made the decisions in this project myself, starting with the tech stack and the architecture.
 
-Both views ask the API again every 15 seconds while the tab is visible, so new polls, and summaries
-that were still pending, appear without a reload.
+The tech stack is Python with FastAPI because I am mainly a Python engineer and that is where I can
+show my work best. I used PostgreSQL with Alembic because I know them well. The UI reflects what I
+have done mostly through my career. Docker is a must in every service I have built; without it the
+service would not be ready to ship. I could have used AI more and written it in TypeScript, but it
+would have taken more time than I had.
 
-## Tests
+The [architecture](#architecture) is maybe slightly over-engineered for the task. I built it the way
+I would want it if it had to scale and keep changing: independent components, so a change in one
+does not change another, each easy to maintain. The poller runs as a single instance because the
+source has one rate limit for everything and the limiter lives in the poller's memory; more pollers
+would need it shared through PostgreSQL or Redis.
 
-```bash
-poetry run pytest
-```
+- **Reading the source**. In the instructions there was a point about the source being outside
+  website on which we don't know much. Well I came to a decision first to learn about it and then
+  use it like we do anything else in life. I probed it over HTTP instead of reading its `listings.json`: 1,240 requests across
+  every competitor and version, with its noise, format variants, partial listings and errors
+  switched on. The same values came back written in many ways, for example 39 different strings for
+  10 prices, so the parser turns them into one form: cleaned text, and a price as amount, currency,
+  period and unit, with `Free` and `$0/mo` as the same free price. I kept the unit as free text, not
+  a fixed list, because the evaluation data may have other units. What we can't read is not
+  guessed: the field counts as missing and the poll is stored as `incomplete`.
+- **Adding an id the source does not know.** I accept any valid id without asking the source. The
+  source answers `404` both for an unknown id and for a competitor that is delisted for now, so a
+  check when adding could not tell the two apart, and adding would have to wait on a slow,
+  rate-limited source. Instead the first poll records `not_found` and the timeline shows it, so a
+  typo shows up after the first poll.
+- **What counts as a change**. Based on what data we had I have decided to go with title, tagline,
+  price or description. Each of these for me seems important as what would count as change. There
+  could be a listing with same title but different price or different description meaning
+  completely different thing. All of that needs to be caught. Before comparing, the parser removes
+  the source's noise (whitespace, HTML entities, the many ways to write a price), so `$29/mo` and
+  `USD 29 per month` are the same price. A field the source left out or sent unreadable is unknown,
+  not removed, so an incomplete or failed poll is never a change. A competitor that disappears or
+  comes back unchanged gets a fixed summary without an LLM call.
+- **Error handling**. There are two types of errors. Exceptions are raised by the source and LLM
+  clients while the poller handles them. Failure records are what gets stored with a snapshot and
+  shown later: a failed poll on the timeline, a failed summary in place of the summary.
+- **The rate limit.** The source based on production notes allows 5 requests per second for
+  everything together, so the rate limiter in the poller spaces all requests evenly, at 4 per second
+  by default. This is another reason why I have those as separate processes, rather than being a
+  background task in the API, where every API worker would start its own. A 429 pauses every request
+  for its `Retry-After` (capped by `CP_POLLER_MAX_RATE_LIMITED_PAUSE_SECONDS`), and the competitor goes back in the queue without a snapshot, since the poll
+  never happened. The source client never retries on its own: every retry spends the same shared budget,
+  so a failed poll is stored as failed and the competitor waits for its next turn.
+- **Scheduling.** Each competitor has a `next_poll_at`. The poller claims the due ones with
+  `FOR UPDATE SKIP LOCKED` and moves their next poll ahead in the same statement, so no competitor
+  is claimed twice and a crash costs one missed poll. Saving a poll locks the competitor's row, so a
+  poll of a competitor removed in the meantime is dropped, and two saves of the same competitor
+  never both report the same change. The timeline pages by `(fetched_at, id)`, so new polls
+  arriving while someone pages cause no gaps or repeats.
+- **How the history is stored.** One `snapshots` row per poll, failed and incomplete polls are
+  included, because I wanted to show them in the timeline. A row has the chosen columns as typed columns
+  along with the error, the changes and the LLM's error validated by Pydantic. Removing a competitor
+  only marks it removed: polling stops, the history stays for its 90 days (configurable) and
+  adding it back again continues the same timeline.
+- **The LLM and its daily cap.** A change is stored as `pending` first, so a slow or failing LLM
+  never loses a poll. Each call is reserved against the cap in PostgreSQL before it is made, so the
+  cap holds however many calls run at once, and failed calls count too. A failure is retried up to
+  `CP_LLM_MAX_ATTEMPTS` times, except a 4xx such as a wrong key or an unknown model (but not 408 or
+  429), which would only fail the same way again. An empty, cut-off or too long answer is not
+  retried and is shown as `llm_unusable`. Either way, the API still returns each changed field's old
+  and new value.
+- **Listing text is untrusted.** I think security as a must and this was one thing that I didn't
+  need to add but I wanted to. Since the listing can come from any source the text there could be
+  malicious and I believe in zero trust, so I wanted to make sure we don't have any prompt injection
+  or anything like that. The worst thing now that can happen is misleading summary but that is up to
+  the user. The limit is done in three layers:
+  1. The system message tells the model the listing is untrusted data to describe, never
+     instructions, and asks for one or two plain sentences.
+  2. The change is sent as JSON between `<listing_change>` markers, with `<` and `>` escaped
+     inside, so the listing text cannot close the block or fake a new one. Each value is cut at
+     `CP_LLM_MAX_FIELD_CHARS`.
+  3. The answer is checked: `temperature` is 0, `max_tokens` is capped (`CP_LLM_MAX_TOKENS`), and
+     an answer with a link, Markdown, HTML or more than one line is stored as `llm_unusable` and
+     never shown. The UI shows summaries as plain text, next to the real old and new values.
 
-The database tests need a PostgreSQL server where they can create databases; each test gets a new
-database and drops it afterwards. Without `CP_TEST_DATABASE_URL` they are skipped:
+  I tried it against `llama3.2:1b` with five injection attempts (ignore the instructions, a fake
+  closing marker and system rule, a demanded link, a demanded Markdown list) and the model followed
+  none of them. That lowers the risk; it does not guarantee anything.
 
-```bash
-docker compose up -d db
-CP_TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres poetry run pytest
-```
-
-## Decisions
-
-- **Adding an id the source does not know.** Any valid id is accepted without asking the source.
-  The source answers `404` both for ids it does not know and for competitors that are delisted
-  for now, so a check when adding could not tell them apart; it would also put a slow,
-  rate-limited source in the path of the request. The first poll records `not_found`, and the
-  timeline shows it. A typo is therefore noticed after the first poll, not when it is added.
-- **Reading the source.** The brief asks to treat the source as an outside website, so its formats
-  were learned by probing it over HTTP, never from its `listings.json`: 1,240 requests over every
-  competitor and version, with its noise, format variants, partial listings and errors switched on.
-  That showed the same values in many forms (whitespace, `&nbsp;`, 39 strings for 10 prices) and
-  the parser turns them into one: text is cleaned, and a price becomes an amount, a currency, a
-  period and a unit (`seat`, or any short unit word; none for a flat price), with `Free` and `$0/mo`
-  as one free price. Over all 1,240 responses, every competitor version parsed to exactly one
-  listing. What the parser cannot read is never guessed: the field counts as missing and the poll
-  as `incomplete`. We first had the unit as a fixed list (`flat`, `seat`) and kept it as text
-  instead, because the evaluation uses other data that may have other units.
-- **What counts as a change.** The parser first removes the source's noise (extra fields,
-  whitespace, HTML entities, and the many ways to write a price), so two listings that differ only
-  in those are equal. A change is then any different value in the title, tagline, price or
-  description, compared with the last value the source sent for that field; prices compare as
-  values, so `$29/mo` and `USD 29 per month` are the same. A field the source left out or sent
-  unreadable is unknown, not removed, so an incomplete poll never counts as a change, and the next
-  poll is still compared with the value read before it (each competitor keeps its last known
-  listing for this); a failed poll does not count either, and does not reset the comparison. A
-  competitor that disappears from the source, or comes back unchanged, is a change with a fixed
-  summary, which costs no LLM call. Every other change waits for the LLM's summary. We considered a
-  threshold for "small" edits (for example a one-word change in the description) and left it out:
-  how much an edit matters is for the summary to say, not a string-similarity number we would have
-  to tune.
-- **The rate limit.** The source allows 5 requests per second for everything together, so one
-  rate limiter in the poller spaces all requests evenly, at 4 per second by default for headroom.
-  That is also why the poller is its own process, started exactly once, rather than a background
-  task in the API, where every API worker would have started its own poller and its own limiter. A
-  429 pauses every request for its `Retry-After`, and the competitor goes back in the queue without
-  a snapshot, since the poll never happened. The source client never retries on its own: every
-  retry spends the same shared budget, so a failed poll is stored as failed and the competitor waits
-  for its next turn.
-- **How the history is stored.** One `snapshots` row per poll, failed and incomplete polls
-  included, because the timeline must show them. A row has the listing as typed columns (the price
-  as amount, currency, period and unit) and the error, the changes and the LLM's error as `jsonb`
-  checked by Pydantic models; check constraints keep each row consistent (for example, an `ok` poll
-  has no error, and a summary exists exactly when its status is `ready`). Removing a competitor only
-  marks it removed: polling stops, the history stays for its 90 days, and adding the same id again
-  continues the same timeline. We considered storing each listing once per version, with polls as
-  small rows pointing to it (smaller, see the production numbers below), and deleting history on
-  removal; one row per poll maps one to one onto the API and keeps the code simple at this size.
-- **Scheduling and running at the same time as the API.** Each competitor has a `next_poll_at`. The
-  poller claims due competitors with `FOR UPDATE SKIP LOCKED` and moves their next poll one interval
-  ahead in the same statement, so a competitor is never claimed twice, and a crash costs one missed
-  poll, not a burst of repeats. Saving a poll locks the competitor's row: a poll of a competitor
-  removed in the meantime is dropped, and two saves of the same competitor (possible when it is
-  removed and added back while a poll is under way) run one after the other, so the second compares
-  with the first and a change is never reported, or summarized, twice. Paging the timeline uses
-  `(fetched_at, id)` as a cursor, so new polls arriving while a user pages never cause gaps or
-  repeats.
-- **The LLM and its daily cap.** A change is stored as `pending` before the LLM is asked, so a slow
-  or failing LLM never loses a poll; the summarizer runs next to the poller and takes the newest
-  changes first, because they matter most when there is a backlog. Each call is reserved against the
-  cap in PostgreSQL first, in one statement, so the cap holds however many calls run at once; a
-  failed call counts too. A failure is tried up to `CP_LLM_MAX_ATTEMPTS` times, then shown as
-  `llm_failed` with the reason; an HTTP error that would fail the same way again (a 4xx such as a
-  wrong key or an unknown model, but not 408 or 429) is not retried, so a misconfigured LLM does not
-  spend the cap three times over; an unusable answer (empty, cut off or too long) is not retried and
-  is shown as `llm_unusable`. When the cap is reached, every waiting change is shown as
-  `cap_reached`, and these are not retried the next day, so that day's budget goes to new changes.
-  In every case the API returns the changed fields with their old and new values, so the user sees
-  what changed even without a summary.
-- **Listing text is untrusted.** It comes from competitors' websites and goes into the LLM's
-  prompt, so it could try to instruct the model (prompt injection). The summary is only text: the
-  LLM has no tools and sees no secrets, so the worst an attack can do is a misleading summary. We
-  limit that in three layers:
-  - **Instructions:** the system message says the listing is untrusted data to describe, never
-    instructions, and asks for one or two plain sentences that state only what the data shows.
-  - **Data that cannot pass for instructions:** the change is sent as JSON between
-    `<listing_change>` markers, with every `<` and `>` inside escaped, so listing text cannot close
-    the block or open a fake one; each value is cut at `CP_LLM_MAX_FIELD_CHARS`.
-  - **Checked output:** `temperature` 0 and `max_tokens` (`CP_LLM_MAX_TOKENS`); an answer with a
-    link, Markdown, HTML or more than one line is stored as `llm_unusable`, never shown. The UI shows
-    summaries as plain text, next to the real old and new values.
-
-  Tried against `llama3.2:1b` with five injection attempts (ignore the instructions, a fake closing
-  marker and system rule, a demanded link, a demanded Markdown list): the model followed none of
-  them. This lowers the risk; it does not guarantee a model never misbehaves.
-
-### The production numbers
-
+## What doesn't fit in production
 The brief's production context: 6,000 competitors, each polled every 15 minutes; at most 5
 requests per second to the source; at most 2,000 LLM calls per day; 90 days of history. These do not
-all fit together.
+all fit together for sure.
 
 **Polling: 6.7 requests per second are needed, 5 are allowed.** 6,000 competitors every 15 minutes
 is 24,000 requests an hour, 6.7 per second. The poller sends at most `CP_POLLER_REQUESTS_PER_SECOND`
 (4 by default, which leaves room under the source's 5), so a full round over 6,000 competitors takes
 about 25 minutes. Nothing breaks: the poller always takes the most overdue competitors first, so
 every competitor falls behind evenly instead of some never being polled, and a 429 pauses every
-request rather than adding to the overload. What we would do next:
+request rather than adding to the overload. Possible things to be considered are:
 
 - **Poll by how often a competitor changes.** Most listings change rarely. A competitor whose last
   change is old can wait an hour; one that changed today, or that a user is looking at, comes back
@@ -275,9 +307,6 @@ request rather than adding to the overload. What we would do next:
 - **Ask the source for more.** A higher limit, a feed of changed ids, or conditional requests
   (`ETag`, `If-None-Match`) so an unchanged listing costs almost nothing. The provided source
   supports none of these.
-- More pollers would not help: the limit is the source's, for all of them together. Scaling out
-  only makes sense for availability, with the rate limiter moved into PostgreSQL or Redis so that
-  all pollers share it.
 
 **LLM calls: 2,000 a day for up to 6,000 competitors.** Only changes that matter are summarized,
 and a competitor that disappears or comes back unchanged gets a fixed summary without a call. Still,
@@ -294,7 +323,7 @@ next:
 
 **History: 90 days of every poll.** At 4 requests per second the poller makes about 346,000 polls a
 day, so 90 days are about 31 million snapshots (39 million at the full 5 per second). Measured in
-our database, a snapshot takes about 290 bytes, about 480 with PostgreSQL's row overhead and the
+PostgreSQL database, a snapshot takes about 290 bytes, about 480 with row overhead and the
 indexes, so 90 days take about 15 GB: a normal size for PostgreSQL. The timeline reads one
 competitor's newest snapshots through an index, so its speed does not depend on the table's size,
 and the Cleaner deletes what is older than 90 days in short batches. What we would do next:
@@ -304,71 +333,16 @@ and the Cleaner deletes what is older than 90 days in short batches. What we wou
 - **A listing once per version.** Most polls repeat the listing before them. Polls as small rows
   that point to a listing stored once per change would make the history about four times smaller.
 
-### Ports and adapters
-
-The code follows the hexagonal architecture (ports and adapters). The logic of each part depends
-only on **ports**: small `Protocol` classes that say what it needs from the outside world. An
-**adapter** implements a port for one technology: PostgreSQL, HTTP, an LLM API. The logic never
-imports an adapter; the composition roots, `app/dependencies.py` and `poller/main.py`, create the
-adapters and hand them in.
-
-| Port (`Protocol`) | Adapter | Used by | Replaced in tests by |
-|---|---|---|---|
-| `CompetitorRepository` | `PostgresCompetitorRepository` | the API's endpoints | `InMemoryCompetitorRepository` |
-| `PollRepository` | `PostgresPollRepository` | the Poller | `SpyPollRepository` |
-| `SummaryRepository` | `PostgresSummaryRepository` | the Summarizer | `InMemorySummaryRepository` |
-| `RetentionRepository` | `PostgresRetentionRepository` | the Cleaner | `SpyRetentionRepository` |
-| `ListingSource` | `HTTPListingSource` | the Poller | `SpyListingSource` |
-| `LLMClient` | `OpenAILLMClient` | the Summarizer | `SpyLLM` |
-
-Why this shape:
-
-- **The outside world is the risky part.** The source is slow, flaky and rate limited; the LLM can
-  be slow, fail or answer badly; both are swapped for other instances by the people evaluating
-  this. Behind a port, each is one class with one job, and what goes wrong there arrives as our own
-  errors (`SourceTimeoutError`, `ListingNotFoundError`, `LLMHTTPError`, ...), never as an `httpx`
-  exception. The API's repository does the same for its outcomes (`CompetitorNotTrackedError`,
-  ...); a database that is down is the exception: its error is not wrapped, and is logged where the
-  poller's tasks catch everything.
-- **Logic is tested without the infrastructure.** The endpoints, the Poller, the Summarizer and the
-  Cleaner run in their tests against fakes and spies, so the tests check our decisions (a 429 is
-  requeued, an unusable answer is not retried, the cap marks every waiting change) quickly, with no
-  database or network. Each adapter has its own tests against what it really talks to: a real
-  PostgreSQL, or an HTTP mock of the source and the LLM.
-- **Adapters can be swapped.** The mock LLM, Ollama and any other OpenAI-compatible API are one
-  adapter and a setting. A native client for another API, such as Anthropic's, would be one more
-  `LLMClient` adapter; nothing that uses the port would change.
-- **One port per consumer, not one per table.** The API, the Poller, the Summarizer and the Cleaner
-  each have their own repository with only the methods they use, so none of them can call
-  something meant for another (the API cannot claim polls; the poller cannot remove competitors).
-  The four repositories share the same tables.
-- **The repository owns the transaction.** Each method is one transaction with its own locking,
-  for example `save_poll` locks the competitor, compares, inserts and sets the last change
-  together. The callers stay free of SQL and of transactions.
-- **HTTP stays at the edge.** Endpoints make one repository call each; the repository raises our
-  errors, and only `app/api_error_handling.py` turns them into HTTP statuses.
-
-Where we bent the pattern, on purpose:
-
-- **The API's repository returns the API's models** (`Competitor`, `Snapshot` in `models.py`), with
-  the price already formatted, instead of domain objects that the endpoint would map. With one API
-  and one storage, the extra mapping layer would only repeat itself; a second API would bring it
-  back.
-- **Change detection runs inside `PostgresPollRepository.save_poll`.** The comparison itself is
-  pure logic in `poller/change_detection.py`, but the repository calls it, because it has to run
-  under the competitor's row lock: two saves of the same competitor must not both see "changed".
-  A cleaner split would need the lock (a unit of work) to be part of the port.
-
 ## Left out on purpose
-
 - **Authentication:** the brief has one internal user.
 - **More than one poller:** it would need the rate limiter shared through PostgreSQL or Redis, and
-  would not raise the source's limit (see the production numbers).
+  would not raise the source's limit (see [What doesn't fit in production](#what-doesnt-fit-in-production)).
 - **Early retries of failed polls:** a failed poll waits for its next turn, because every retry
   spends the shared request budget.
 - **Polling by how often a competitor changes, one LLM call for several changes, monthly
-  partitions:** the next steps in the production numbers.
-- **A threshold for "small" changes:** see what counts as a change.
+  partitions:** the next steps in [What doesn't fit in production](#what-doesnt-fit-in-production).
+- **A threshold for "small" changes:** how much an edit matters is for the summary to say, not a
+  similarity number we would have to tune.
 - **Retrying changes that hit the daily LLM cap:** the next day's budget goes to new changes; the
   old ones still show their old and new values.
 - **Protection against an LLM outage:** every failed call counts against the daily cap, and a
@@ -377,25 +351,30 @@ Where we bent the pattern, on purpose:
   circuit breaker that stops calling after a few failures in a row and tries again later, leaving
   the changes `pending` meanwhile.
 - **Native clients for LLM APIs that are not OpenAI-compatible,** such as Anthropic's: one more
-  `LLMClient` adapter (see ports and adapters).
+  `LLMClient` adapter (see [Architecture](#architecture)).
 - **Metrics and alerts,** for example on failed polls, the request rate and the LLM budget: the
   services write structured logs, but nothing collects them.
 - **End-to-end browser tests:** the frontend has unit tests for its logic; the API and the
   repositories are tested in Python.
-- **A cloud deployment** (a bonus point in the brief).
+- **A cloud deployment** (a bonus point in the brief). I have few VMs online but those are already
+  busy with personal projects and I didn't have time to do it next to them.
+
 
 ## AI tools
+And this one is a must nowadays. I have used **Claude Code** personal on Pro with Opus 5.5 which
+I use day-to-day and I already have all the skills I need. You can see through my GitHub
+commit history what has been done in steps, some bigger than others.
 
-I used **Claude Code** (Claude Opus 5.5) throughout. I chose the tech stack and the architecture;
-for each part it proposed a design, and I approved or changed it before any code was written.
-
-One place where I changed what it proposed: **the repositories.** It first put the poller's methods
-(claiming due competitors, saving polls) into the API's `CompetitorRepository`, arguing that saving
-a poll touches both tables. I had it split into one repository per consumer: the API, the poller,
-the summarizer and the cleaner each depend on their own port with only the methods they use. The
-transaction argument did not hold, because a single method can still cover both tables; and the
-split removed methods that each side must never call, and the API settings the poller had to pass in
-only to build the shared repository.
+If left out to Claude it would have done things very differently. Practically it proposed to use
+TypeScript or Go but again that is not me. Over the time it made a lot of decisions that I didn't
+agree on, but the worst one was when it tried to couple the repository we have for competitor
+related logic and the poller process and its three tasks (poller, summarizer, cleaner). Next would be how it
+defined the endpoints of the API. In my opinion, endpoints should have only one thing in them and
+all the unrelated API logic should be in the other components like repositories. Third would be unit
+tests, on which I have specific way of development and that is TDD which I want to follow whenever I
+am given a chance. Written tests make better implementation if we know what to expect. There are
+also other smaller bits, like the documentation which I wanted to be written in specific way, the
+setup of the skeletons, and the structure of the code.
 
 ## Development setup
 
