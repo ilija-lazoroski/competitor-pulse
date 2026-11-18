@@ -318,15 +318,15 @@ adapters and hand them in.
 | `PollRepository` | `PostgresPollRepository` | the Poller | `FakePollRepository` |
 | `SummaryRepository` | `PostgresSummaryRepository` | the Summarizer | `FakeSummaryRepository` |
 | `RetentionRepository` | `PostgresRetentionRepository` | the Cleaner | `FakeRetentionRepository` |
-| `ListingSource` | `HttpListingSource` | the Poller | `FakeListingSource` |
-| `LlmClient` | `OpenAiLlmClient` | the Summarizer | `FakeLlm` |
+| `ListingSource` | `HTTPListingSource` | the Poller | `FakeListingSource` |
+| `LLMClient` | `OpenAILLMClient` | the Summarizer | `FakeLLM` |
 
 Why this shape:
 
 - **The outside world is the risky part.** The source is slow, flaky and rate limited; the LLM can
   be slow, fail or answer badly; both are swapped for other instances by the people evaluating
   this. Behind a port, each is one class with one job, and what goes wrong there arrives as our own
-  errors (`SourceTimeoutError`, `ListingNotFoundError`, `LlmHttpError`, ...), never as an `httpx`
+  errors (`SourceTimeoutError`, `ListingNotFoundError`, `LLMHTTPError`, ...), never as an `httpx`
   exception. The API's repository does the same for its outcomes (`CompetitorNotTrackedError`,
   ...); a database that is down is the exception: its error is not wrapped, and is logged where the
   poller's tasks catch everything.
@@ -337,7 +337,7 @@ Why this shape:
   PostgreSQL, or an HTTP mock of the source and the LLM.
 - **Adapters can be swapped.** The mock LLM, Ollama and any other OpenAI-compatible API are one
   adapter and a setting. A native client for another API, such as Anthropic's, would be one more
-  `LlmClient` adapter; nothing that uses the port would change.
+  `LLMClient` adapter; nothing that uses the port would change.
 - **One port per consumer, not one per table.** The API, the Poller, the Summarizer and the Cleaner
   each have their own repository with only the methods they use, so none of them can call
   something meant for another (the API cannot claim polls; the poller cannot remove competitors).
@@ -377,7 +377,7 @@ Where we bent the pattern, on purpose:
   circuit breaker that stops calling after a few failures in a row and tries again later, leaving
   the changes `pending` meanwhile.
 - **Native clients for LLM APIs that are not OpenAI-compatible,** such as Anthropic's: one more
-  `LlmClient` adapter (see ports and adapters).
+  `LLMClient` adapter (see ports and adapters).
 - **Metrics and alerts,** for example on failed polls, the request rate and the LLM budget: the
   services write structured logs, but nothing collects them.
 - **End-to-end browser tests:** the frontend has unit tests for its logic; the API and the

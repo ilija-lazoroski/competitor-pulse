@@ -9,7 +9,7 @@ import json
 from typing import Final
 
 from competitor_pulse.formatting import format_value
-from competitor_pulse.types import Changes, CompetitorId
+from competitor_pulse.types import Changes, CompetitorID
 
 OPENING_MARKER: Final = "<listing_change>"
 CLOSING_MARKER: Final = "</listing_change>"
@@ -28,7 +28,7 @@ INSTRUCTIONS: Final = (
 )
 
 
-def build_prompt(competitor_id: CompetitorId, changes: Changes, max_field_chars: int) -> str:
+def build_prompt(competitor_id: CompetitorID, changes: Changes, max_field_chars: int) -> str:
     """Describes a change for the LLM as JSON between fixed markers.
 
     Every < and > inside the JSON is escaped, so listing text can never close the block or open

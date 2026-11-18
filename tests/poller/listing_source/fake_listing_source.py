@@ -1,5 +1,5 @@
 from competitor_pulse.models import Listing
-from competitor_pulse.types import CompetitorId
+from competitor_pulse.types import CompetitorID
 
 
 class FakeListingSource:
@@ -9,7 +9,7 @@ class FakeListingSource:
         self._answers = answers
         self.fetched: list[str] = []
 
-    async def fetch(self, competitor_id: CompetitorId) -> Listing:
+    async def fetch(self, competitor_id: CompetitorID) -> Listing:
         self.fetched.append(competitor_id)
         answer = self._answers[competitor_id]
         if isinstance(answer, Exception):

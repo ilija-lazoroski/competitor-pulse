@@ -13,11 +13,11 @@ from competitor_pulse.errors import CompetitorPulseError
 _RETRYABLE_STATUSES: Final = frozenset({HTTPStatus.REQUEST_TIMEOUT, HTTPStatus.TOO_MANY_REQUESTS})
 
 
-class LlmError(CompetitorPulseError):
+class LLMError(CompetitorPulseError):
     """Base class for the ways a call to the LLM can fail."""
 
 
-class LlmTimeoutError(LlmError):
+class LLMTimeoutError(LLMError):
     """The LLM did not answer in time."""
 
     def __init__(self, after_seconds: float):
@@ -28,14 +28,14 @@ class LlmTimeoutError(LlmError):
         )
 
 
-class LlmConnectionError(LlmError):
+class LLMConnectionError(LLMError):
     """The request to the LLM failed without an answer: connection, protocol or decoding."""
 
     def __init__(self, reason: str):
         super().__init__(f"Could not reach the LLM: {reason}", kind="connection")
 
 
-class LlmHttpError(LlmError):
+class LLMHTTPError(LLMError):
     """The LLM answered with an HTTP error status, like 500."""
 
     def __init__(self, status: int):
@@ -44,7 +44,7 @@ class LlmHttpError(LlmError):
         self.retryable = status >= HTTPStatus.INTERNAL_SERVER_ERROR or status in _RETRYABLE_STATUSES
 
 
-class LlmUnusableAnswerError(LlmError):
+class LLMUnusableAnswerError(LLMError):
     """The LLM answered, but not with a summary we can show."""
 
     def __init__(self, reason: str):

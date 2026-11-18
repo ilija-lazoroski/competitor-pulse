@@ -2,13 +2,13 @@ from datetime import timedelta
 from typing import Protocol
 
 from competitor_pulse.models import PollResult
-from competitor_pulse.types import CompetitorId
+from competitor_pulse.types import CompetitorID
 
 
 class PollRepository(Protocol):
     """The poll schedule of the tracked competitors, and where their polls are stored."""
 
-    async def claim_due(self, limit: int, interval: timedelta) -> list[CompetitorId]:
+    async def claim_due(self, limit: int, interval: timedelta) -> list[CompetitorID]:
         """Takes the tracked competitors that are due for a poll, most overdue first.
 
         Their next poll moves one interval ahead at once, so no other caller claims them again.
@@ -19,14 +19,14 @@ class PollRepository(Protocol):
         """
         ...
 
-    async def requeue(self, competitor_id: CompetitorId) -> None:
+    async def requeue(self, competitor_id: CompetitorID) -> None:
         """Makes a tracked competitor due again now, after a poll that did not happen.
 
         :param competitor_id: The competitor to poll again
         """
         ...
 
-    async def save_poll(self, competitor_id: CompetitorId, result: PollResult) -> bool:
+    async def save_poll(self, competitor_id: CompetitorID, result: PollResult) -> bool:
         """Stores a poll as the competitor's newest snapshot, with whether it changed anything.
 
         The poll is compared with the last value read for each field, even if the polls since

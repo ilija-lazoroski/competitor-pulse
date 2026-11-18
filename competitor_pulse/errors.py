@@ -39,7 +39,7 @@ class PollConnectionError(ErrorRecord):
     kind: Literal["connection"] = "connection"
 
 
-class PollHttpError(ErrorRecord):
+class PollHTTPError(ErrorRecord):
     kind: Literal["http_status"] = "http_status"
     status: int
 
@@ -62,7 +62,7 @@ PollError = Annotated[
     PollNotFound
     | PollTimeout
     | PollConnectionError
-    | PollHttpError
+    | PollHTTPError
     | PollRateLimited
     | PollInvalidBody
     | PollIncomplete,
@@ -83,7 +83,7 @@ class SummaryConnectionError(ErrorRecord):
     kind: Literal["connection"] = "connection"
 
 
-class SummaryHttpError(ErrorRecord):
+class SummaryHTTPError(ErrorRecord):
     kind: Literal["http_status"] = "http_status"
     status: int
 
@@ -93,7 +93,7 @@ class SummaryUnusableAnswer(ErrorRecord):
 
 
 SummaryError = Annotated[
-    SummaryTimeout | SummaryConnectionError | SummaryHttpError | SummaryUnusableAnswer,
+    SummaryTimeout | SummaryConnectionError | SummaryHTTPError | SummaryUnusableAnswer,
     Field(discriminator="kind"),
 ]
 summary_error_adapter: Final = TypeAdapter(SummaryError)

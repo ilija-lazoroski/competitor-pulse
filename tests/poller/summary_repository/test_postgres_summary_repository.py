@@ -7,7 +7,7 @@ from sqlalchemy import Engine, func, select, text
 from sqlalchemy.dialects.postgresql import insert
 
 from competitor_pulse.database import Database
-from competitor_pulse.errors import SummaryHttpError, SummaryUnusableAnswer
+from competitor_pulse.errors import SummaryHTTPError, SummaryUnusableAnswer
 from competitor_pulse.poller.summary_repository import PostgresSummaryRepository
 from competitor_pulse.tables import competitors, llm_usage, snapshots
 from competitor_pulse.types import FieldChange, ListingField
@@ -131,7 +131,7 @@ async def test_summary_is_stored(repository: PostgresSummaryRepository, migrated
     ("error", "unusable", "status"),
     [
         (
-            SummaryHttpError(message="The LLM answered with HTTP 500", status=500),
+            SummaryHTTPError(message="The LLM answered with HTTP 500", status=500),
             False,
             "llm_failed",
         ),

@@ -117,7 +117,7 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 ### Changed
 
 - The stored LLM error records are named `SummaryTimeout`,
-  `SummaryConnectionError`, `SummaryHttpError` and `SummaryUnusableAnswer`.
+  `SummaryConnectionError`, `SummaryHTTPError` and `SummaryUnusableAnswer`.
 
 ### Fixed
 

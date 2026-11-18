@@ -10,17 +10,17 @@ from competitor_pulse.app.competitor_repository.errors import (
     CompetitorNotTrackedError,
     InvalidPageSizeError,
 )
-from competitor_pulse.configuration import ApiConfiguration
+from competitor_pulse.configuration import APIConfiguration
 from competitor_pulse.formatting import format_price, format_value
 from competitor_pulse.models import ChangeView, Competitor, Snapshot
 from competitor_pulse.tables import competitors, is_tracked, snapshots
-from competitor_pulse.types import CompetitorId, Price, changes_adapter
+from competitor_pulse.types import CompetitorID, Price, changes_adapter
 
 
 class PostgresCompetitorRepository(CompetitorRepository):
     """The CompetitorRepository on PostgreSQL, with SQLAlchemy Core."""
 
-    def __init__(self, engine: AsyncEngine, config: ApiConfiguration):
+    def __init__(self, engine: AsyncEngine, config: APIConfiguration):
         self._engine = engine
         self._recent_change_window = timedelta(hours=config.recent_change_hours)
         self._page_size = config.snapshots_page_size
@@ -45,7 +45,7 @@ class PostgresCompetitorRepository(CompetitorRepository):
             rows = await connection.execute(query)
             return [Competitor.model_validate(row._mapping) for row in rows]
 
-    async def add(self, competitor_id: CompetitorId) -> None:
+    async def add(self, competitor_id: CompetitorID) -> None:
         async with self._engine.begin() as connection:
             created = await connection.execute(
                 insert(competitors)
@@ -65,7 +65,7 @@ class PostgresCompetitorRepository(CompetitorRepository):
             if not restored.first():
                 raise CompetitorAlreadyTrackedError(competitor_id)
 
-    async def remove(self, competitor_id: CompetitorId) -> None:
+    async def remove(self, competitor_id: CompetitorID) -> None:
         async with self._engine.begin() as connection:
             removed = await connection.execute(
                 competitors.update()
@@ -77,7 +77,7 @@ class PostgresCompetitorRepository(CompetitorRepository):
                 raise CompetitorNotTrackedError(competitor_id)
 
     async def list_snapshots(
-        self, competitor_id: CompetitorId, limit: int | None, before_id: int | None
+        self, competitor_id: CompetitorID, limit: int | None, before_id: int | None
     ) -> list[Snapshot]:
         if limit is not None and limit > self._max_page_size:
             raise InvalidPageSizeError(limit, self._max_page_size)
@@ -109,7 +109,7 @@ class PostgresCompetitorRepository(CompetitorRepository):
             return [_to_snapshot(row) for row in rows]
 
     @staticmethod
-    async def _lock_tracked(connection: AsyncConnection, competitor_id: CompetitorId) -> None:
+    async def _lock_tracked(connection: AsyncConnection, competitor_id: CompetitorID) -> None:
         """Locks a tracked competitor's row, so a removal waits until the transaction ends.
 
         :param connection: The connection whose transaction holds the lock

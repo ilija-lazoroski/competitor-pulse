@@ -2,14 +2,14 @@ import asyncio
 
 from service_kit.logging import logger
 
-from competitor_pulse.configuration import LlmConfiguration
+from competitor_pulse.configuration import LLMConfiguration
 from competitor_pulse.errors import summary_error_adapter
 from competitor_pulse.models import PendingSummary
 from competitor_pulse.poller.llm_client import (
-    LlmClient,
-    LlmError,
-    LlmHttpError,
-    LlmUnusableAnswerError,
+    LLMClient,
+    LLMError,
+    LLMHTTPError,
+    LLMUnusableAnswerError,
 )
 from competitor_pulse.poller.summary_prompt import INSTRUCTIONS, build_prompt
 from competitor_pulse.poller.summary_repository import SummaryRepository
@@ -22,7 +22,7 @@ class Summarizer:
     as pending until its summary, or the reason for not having one, is stored.
     """
 
-    def __init__(self, repository: SummaryRepository, llm: LlmClient, config: LlmConfiguration):
+    def __init__(self, repository: SummaryRepository, llm: LLMClient, config: LLMConfiguration):
         self._repository = repository
         self._llm = llm
         self._config = config
@@ -62,12 +62,12 @@ class Summarizer:
                 return
             try:
                 summary = await self._llm.complete(INSTRUCTIONS, prompt)
-            except LlmUnusableAnswerError as err:
+            except LLMUnusableAnswerError as err:
                 await self._store_failure(change, err, unusable=True)
                 return
-            except LlmError as err:
+            except LLMError as err:
                 # A 4xx like a wrong key or an unknown model fails the same way every time.
-                retryable = not isinstance(err, LlmHttpError) or err.retryable
+                retryable = not isinstance(err, LLMHTTPError) or err.retryable
                 if not retryable or attempt == self._config.max_attempts:
                     await self._store_failure(change, err, unusable=False)
                     return
@@ -88,7 +88,7 @@ class Summarizer:
             logger.error("Listing pending summaries failed", error=str(err))
             return []
 
-    async def _store_failure(self, change: PendingSummary, err: LlmError, unusable: bool) -> None:
+    async def _store_failure(self, change: PendingSummary, err: LLMError, unusable: bool) -> None:
         """Stores why a change gets no summary.
 
         :param change: The change

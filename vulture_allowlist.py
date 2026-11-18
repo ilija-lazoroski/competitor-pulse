@@ -7,7 +7,7 @@ from competitor_pulse.app.competitors import (
 )
 from competitor_pulse.app.health import HealthResponse, UnavailableResponse, health_db
 from competitor_pulse.configuration import (
-    ApiConfiguration,
+    APIConfiguration,
     CompetitorPulseConfiguration,
     DatabaseConfiguration,
     PollerConfiguration,
@@ -33,8 +33,8 @@ UnavailableResponse.status
 CompetitorPulseConfiguration.model_config
 DatabaseConfiguration.model_config
 DatabaseConfiguration._max_size_is_not_below_min_size
-ApiConfiguration.model_config
-ApiConfiguration._page_size_is_not_above_max_page_size
+APIConfiguration.model_config
+APIConfiguration._page_size_is_not_above_max_page_size
 PollerConfiguration._pause_is_not_above_max_pause
 
 # Route functions are called by FastAPI.
@@ -56,13 +56,13 @@ to_sqlalchemy_url
 from competitor_pulse.errors import (  # noqa: E402
     ErrorRecord,
     PollConnectionError,
-    PollHttpError,
+    PollHTTPError,
     PollIncomplete,
     PollInvalidBody,
     PollRateLimited,
     PollTimeout,
     SummaryConnectionError,
-    SummaryHttpError,
+    SummaryHTTPError,
     SummaryTimeout,
     SummaryUnusableAnswer,
     poll_error_adapter,
@@ -107,14 +107,14 @@ Price.unit
 Price._only_paid_prices_have_currency_period_and_unit
 ErrorRecord.message
 SummaryConnectionError.kind
-SummaryHttpError.kind
-SummaryHttpError.status
+SummaryHTTPError.kind
+SummaryHTTPError.status
 SummaryTimeout.kind
 SummaryTimeout.after_seconds
 SummaryUnusableAnswer.kind
 PollConnectionError.kind
-PollHttpError.kind
-PollHttpError.status
+PollHTTPError.kind
+PollHTTPError.status
 PollIncomplete.kind
 PollIncomplete.fields
 PollInvalidBody.kind
@@ -130,7 +130,7 @@ snapshots
 from competitor_pulse.configuration import SourceConfiguration  # noqa: E402
 from competitor_pulse.errors import PollNotFound  # noqa: E402
 from competitor_pulse.models import Listing  # noqa: E402
-from competitor_pulse.poller.listing_source import HttpListingSource  # noqa: E402
+from competitor_pulse.poller.listing_source import HTTPListingSource  # noqa: E402
 
 # Step 3 (listing source): the parser is called by the source client and the poller next.
 from competitor_pulse.poller.listing_source.listing_parser import parse_listing  # noqa: E402
@@ -139,6 +139,6 @@ parse_listing
 Listing.missing_fields
 SourceConfiguration.model_config
 PollNotFound.kind
-HttpListingSource.from_configuration
-HttpListingSource.fetch
-HttpListingSource.close
+HTTPListingSource.from_configuration
+HTTPListingSource.fetch
+HTTPListingSource.close

@@ -9,7 +9,7 @@ from service_kit import ServiceKitBaseModel
 from competitor_pulse.errors import PollError
 from competitor_pulse.types import (
     Changes,
-    CompetitorId,
+    CompetitorID,
     ListingField,
     PollOutcome,
     Price,
@@ -17,7 +17,7 @@ from competitor_pulse.types import (
 )
 
 
-class ApiModel(ServiceKitBaseModel):
+class APIModel(ServiceKitBaseModel):
     """A model whose JSON uses camelCase (fetchedAt), as in the brief's contract."""
 
     model_config = {
@@ -27,10 +27,10 @@ class ApiModel(ServiceKitBaseModel):
     }
 
 
-class Competitor(ApiModel):
+class Competitor(APIModel):
     """A tracked competitor."""
 
-    id: CompetitorId
+    id: CompetitorID
     created_at: datetime
     last_changed_at: datetime | None
     changed_recently: bool = Field(
@@ -38,14 +38,14 @@ class Competitor(ApiModel):
     )
 
 
-class ChangeView(ApiModel):
+class ChangeView(APIModel):
     """A changed field's value before and after, formatted for people; None if not there."""
 
     old: str | None
     new: str | None
 
 
-class Snapshot(ApiModel):
+class Snapshot(APIModel):
     """One poll of a competitor: the listing it found, or why it found none."""
 
     id: int = Field(description="Pass as `before` to get the next, older page")
@@ -98,5 +98,5 @@ class PendingSummary(ServiceKitBaseModel):
     """A snapshot whose change waits for the LLM's summary."""
 
     snapshot_id: int
-    competitor_id: CompetitorId
+    competitor_id: CompetitorID
     changes: Changes

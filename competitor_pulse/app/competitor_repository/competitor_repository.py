@@ -1,7 +1,7 @@
 from typing import Protocol
 
 from competitor_pulse.models import Competitor, Snapshot
-from competitor_pulse.types import CompetitorId
+from competitor_pulse.types import CompetitorID
 
 
 class CompetitorRepository(Protocol):
@@ -17,7 +17,7 @@ class CompetitorRepository(Protocol):
         """
         ...
 
-    async def add(self, competitor_id: CompetitorId) -> None:
+    async def add(self, competitor_id: CompetitorID) -> None:
         """Starts tracking a competitor; a removed one is restored with its history.
 
         :param competitor_id: The competitor to track
@@ -25,7 +25,7 @@ class CompetitorRepository(Protocol):
         """
         ...
 
-    async def remove(self, competitor_id: CompetitorId) -> None:
+    async def remove(self, competitor_id: CompetitorID) -> None:
         """Stops tracking a competitor and keeps its history.
 
         :param competitor_id: The competitor to stop tracking
@@ -34,7 +34,7 @@ class CompetitorRepository(Protocol):
         ...
 
     async def list_snapshots(
-        self, competitor_id: CompetitorId, limit: int | None, before_id: int | None
+        self, competitor_id: CompetitorID, limit: int | None, before_id: int | None
     ) -> list[Snapshot]:
         """Lists one page of a competitor's snapshots, newest first.
 

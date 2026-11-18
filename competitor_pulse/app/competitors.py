@@ -8,18 +8,18 @@ from service_kit.api import get_standard_responses
 
 from competitor_pulse.app.competitor_repository import CompetitorRepository
 from competitor_pulse.app.dependencies import competitor_repository
-from competitor_pulse.models import ApiModel, Competitor, Snapshot
-from competitor_pulse.types import CompetitorId
+from competitor_pulse.models import APIModel, Competitor, Snapshot
+from competitor_pulse.types import CompetitorID
 
 router = APIRouter(prefix="/api/competitors", tags=["competitors"])
 
 Repository = Annotated[CompetitorRepository, Depends(competitor_repository)]
 
 
-class CompetitorCreate(ApiModel):
+class CompetitorCreate(APIModel):
     """The body of a request to start tracking a competitor."""
 
-    id: CompetitorId
+    id: CompetitorID
 
 
 @router.get("", summary="List tracked competitors")
@@ -58,7 +58,7 @@ async def add_competitor(body: CompetitorCreate, repository: Repository) -> Comp
     summary="Stop tracking a competitor",
     responses=get_standard_responses([HTTPStatus.NOT_FOUND]),
 )
-async def remove_competitor(competitor_id: CompetitorId, repository: Repository) -> None:
+async def remove_competitor(competitor_id: CompetitorID, repository: Repository) -> None:
     """Stops polling a competitor; its history is kept for the retention period.
 
     :param competitor_id: The competitor to stop tracking
@@ -74,7 +74,7 @@ async def remove_competitor(competitor_id: CompetitorId, repository: Repository)
     responses=get_standard_responses([HTTPStatus.NOT_FOUND]),
 )
 async def list_snapshots(
-    competitor_id: CompetitorId,
+    competitor_id: CompetitorID,
     repository: Repository,
     limit: Annotated[int | None, Query(ge=1, description="Page size")] = None,
     before: Annotated[

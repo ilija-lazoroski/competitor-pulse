@@ -47,7 +47,7 @@ class SourceRateLimitedError(SourceError):
         )
 
 
-class SourceHttpError(SourceError):
+class SourceHTTPError(SourceError):
     """The source answered with an unexpected HTTP status, like 500 or 502."""
 
     def __init__(self, status: int):

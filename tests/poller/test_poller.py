@@ -13,7 +13,7 @@ from competitor_pulse.poller.listing_source import (
 )
 from competitor_pulse.poller.poller import Poller
 from competitor_pulse.poller.rate_limiter import RateLimiter
-from competitor_pulse.types import CompetitorId, PollOutcome
+from competitor_pulse.types import CompetitorID, PollOutcome
 from tests.poller.listing_source.fake_listing_source import FakeListingSource
 from tests.poller.poll_repository.fake_poll_repository import FakePollRepository
 
@@ -107,7 +107,7 @@ async def test_rate_limited_poll_is_requeued_and_pauses_requests(
 
 async def test_run_polls_every_due_competitor_and_survives_a_failing_save():
     class FailingSaveRepository(FakePollRepository):
-        async def save_poll(self, competitor_id: CompetitorId, result: PollResult) -> bool:
+        async def save_poll(self, competitor_id: CompetitorID, result: PollResult) -> bool:
             if competitor_id == "broken":
                 raise ConnectionError("database is down")
             return await super().save_poll(competitor_id, result)

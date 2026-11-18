@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from competitor_pulse.models import PollResult
-from competitor_pulse.types import CompetitorId
+from competitor_pulse.types import CompetitorID
 
 
 class FakePollRepository:
@@ -13,14 +13,14 @@ class FakePollRepository:
         self.requeued: list[str] = []
         self.saved: list[tuple[str, PollResult]] = []
 
-    async def claim_due(self, limit: int, interval: timedelta) -> list[CompetitorId]:
+    async def claim_due(self, limit: int, interval: timedelta) -> list[CompetitorID]:
         claimed, self.due = self.due[:limit], self.due[limit:]
         return claimed
 
-    async def requeue(self, competitor_id: CompetitorId) -> None:
+    async def requeue(self, competitor_id: CompetitorID) -> None:
         self.requeued.append(competitor_id)
 
-    async def save_poll(self, competitor_id: CompetitorId, result: PollResult) -> bool:
+    async def save_poll(self, competitor_id: CompetitorID, result: PollResult) -> bool:
         if competitor_id not in self.tracked:
             return False
         self.saved.append((competitor_id, result))

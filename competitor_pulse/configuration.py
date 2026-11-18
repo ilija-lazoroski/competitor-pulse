@@ -56,7 +56,7 @@ class DatabaseConfiguration(BaseSettings, ServiceKitBaseModel):
         return self
 
 
-class ApiConfiguration(BaseSettings, ServiceKitBaseModel):
+class APIConfiguration(BaseSettings, ServiceKitBaseModel):
     """Settings of the competitor API from CP_API_* environment variables."""
 
     model_config = SettingsConfigDict(
@@ -188,7 +188,7 @@ class CleanerConfiguration(BaseSettings, ServiceKitBaseModel):
     )
 
 
-class LlmConfiguration(BaseSettings, ServiceKitBaseModel):
+class LLMConfiguration(BaseSettings, ServiceKitBaseModel):
     """Settings of the LLM that writes change summaries, from CP_LLM_* environment variables.
 
     Any server with an OpenAI-compatible Chat Completions API works: the provided mock, Ollama,
@@ -254,11 +254,11 @@ class CompetitorPulseConfiguration(ServiceConfiguration):
     )
 
     database: DatabaseConfiguration = Field(description="The PostgreSQL settings")
-    api: ApiConfiguration = Field(description="The competitor API settings")
+    api: APIConfiguration = Field(description="The competitor API settings")
     source: SourceConfiguration = Field(description="The listing source settings")
     poller: PollerConfiguration = Field(description="The poller settings")
     cleaner: CleanerConfiguration = Field(description="The cleaner settings")
-    llm: LlmConfiguration = Field(description="The LLM settings")
+    llm: LLMConfiguration = Field(description="The LLM settings")
 
 
 def load_configuration() -> CompetitorPulseConfiguration:
@@ -274,11 +274,11 @@ def load_configuration() -> CompetitorPulseConfiguration:
     logger.info(f"Loading configuration - config file: {config_file_path}")
 
     database = DatabaseConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
-    api = ApiConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
+    api = APIConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
     source = SourceConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
     poller = PollerConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
     cleaner = CleanerConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
-    llm = LlmConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
+    llm = LLMConfiguration(_env_file=config_file_path)  # type: ignore[call-arg]
     return CompetitorPulseConfiguration(
         _env_file=config_file_path,
         database=database,

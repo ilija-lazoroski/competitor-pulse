@@ -9,7 +9,7 @@ from competitor_pulse.models import ListingValues, PollResult
 from competitor_pulse.poller.change_detection import ChangeDecision, decide, remember
 from competitor_pulse.poller.poll_repository.poll_repository import PollRepository
 from competitor_pulse.tables import competitors, is_tracked, snapshots
-from competitor_pulse.types import CompetitorId, PollOutcome, changes_adapter
+from competitor_pulse.types import CompetitorID, PollOutcome, changes_adapter
 
 _LISTING_OUTCOMES: Final = (PollOutcome.OK, PollOutcome.INCOMPLETE)
 
@@ -20,7 +20,7 @@ class PostgresPollRepository(PollRepository):
     def __init__(self, engine: AsyncEngine):
         self._engine = engine
 
-    async def claim_due(self, limit: int, interval: timedelta) -> list[CompetitorId]:
+    async def claim_due(self, limit: int, interval: timedelta) -> list[CompetitorID]:
         # SKIP LOCKED: competitors another transaction is claiming or saving are left alone.
         due = (
             select(competitors.c.id)
@@ -39,7 +39,7 @@ class PostgresPollRepository(PollRepository):
         async with self._engine.begin() as connection:
             return list((await connection.execute(claim)).scalars())
 
-    async def requeue(self, competitor_id: CompetitorId) -> None:
+    async def requeue(self, competitor_id: CompetitorID) -> None:
         async with self._engine.begin() as connection:
             await connection.execute(
                 competitors.update()
@@ -47,7 +47,7 @@ class PostgresPollRepository(PollRepository):
                 .values(next_poll_at=func.now())
             )
 
-    async def save_poll(self, competitor_id: CompetitorId, result: PollResult) -> bool:
+    async def save_poll(self, competitor_id: CompetitorID, result: PollResult) -> bool:
         async with self._engine.begin() as connection:
             competitor = await self._lock_tracked(connection, competitor_id)
             if competitor is None:
@@ -89,7 +89,7 @@ class PostgresPollRepository(PollRepository):
 
     @staticmethod
     async def _latest_answer_was_not_found(
-        connection: AsyncConnection, competitor_id: CompetitorId
+        connection: AsyncConnection, competitor_id: CompetitorID
     ) -> bool:
         """Tells whether the source did not list the competitor at its latest answered poll.
 
@@ -113,7 +113,7 @@ class PostgresPollRepository(PollRepository):
         return outcome == PollOutcome.NOT_FOUND
 
     @staticmethod
-    async def _lock_tracked(connection: AsyncConnection, competitor_id: CompetitorId) -> Row | None:
+    async def _lock_tracked(connection: AsyncConnection, competitor_id: CompetitorID) -> Row | None:
         """Locks a tracked competitor's row against every other writer until the transaction ends.
 
         :param connection: The connection whose transaction holds the lock

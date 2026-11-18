@@ -12,11 +12,11 @@ from competitor_pulse.app.competitor_repository import (
     CompetitorRepository,
     PostgresCompetitorRepository,
 )
-from competitor_pulse.configuration import ApiConfiguration
+from competitor_pulse.configuration import APIConfiguration
 from competitor_pulse.database import Database
 
 _database: Database | None = None
-_api_configuration: ApiConfiguration | None = None
+_api_configuration: APIConfiguration | None = None
 
 
 def database() -> Database:
@@ -30,7 +30,7 @@ def database() -> Database:
     return _database
 
 
-def api_configuration() -> ApiConfiguration:
+def api_configuration() -> APIConfiguration:
     """Gives the competitor API settings.
 
     :returns: The settings loaded in setup()
@@ -43,7 +43,7 @@ def api_configuration() -> ApiConfiguration:
 
 def competitor_repository(
     db: Annotated[Database, Depends(database)],
-    config: Annotated[ApiConfiguration, Depends(api_configuration)],
+    config: Annotated[APIConfiguration, Depends(api_configuration)],
 ) -> CompetitorRepository:
     """Gives the competitor repository for a request.
 

@@ -6,7 +6,7 @@ from competitor_pulse.app.competitor_repository import (
     InvalidPageSizeError,
 )
 from competitor_pulse.models import Competitor, Snapshot
-from competitor_pulse.types import CompetitorId
+from competitor_pulse.types import CompetitorID
 
 CREATED_AT = datetime(2026, 9, 1, tzinfo=UTC)
 MAX_PAGE_SIZE = 200
@@ -32,17 +32,17 @@ class FakeCompetitorRepository:
     async def list_tracked(self) -> list[Competitor]:
         return [self._tracked[id_] for id_ in sorted(self._tracked)]
 
-    async def add(self, competitor_id: CompetitorId) -> None:
+    async def add(self, competitor_id: CompetitorID) -> None:
         if competitor_id in self._tracked:
             raise CompetitorAlreadyTrackedError(competitor_id)
         self.track(competitor_id)
 
-    async def remove(self, competitor_id: CompetitorId) -> None:
+    async def remove(self, competitor_id: CompetitorID) -> None:
         if self._tracked.pop(competitor_id, None) is None:
             raise CompetitorNotTrackedError(competitor_id)
 
     async def list_snapshots(
-        self, competitor_id: CompetitorId, limit: int | None, before_id: int | None
+        self, competitor_id: CompetitorID, limit: int | None, before_id: int | None
     ) -> list[Snapshot]:
         if limit is not None and limit > MAX_PAGE_SIZE:
             raise InvalidPageSizeError(limit, MAX_PAGE_SIZE)

@@ -11,7 +11,7 @@ from competitor_pulse.app.competitor_repository import (
     InvalidPageSizeError,
     PostgresCompetitorRepository,
 )
-from competitor_pulse.configuration import ApiConfiguration
+from competitor_pulse.configuration import APIConfiguration
 from competitor_pulse.database import Database
 from competitor_pulse.tables import competitors, snapshots
 
@@ -35,7 +35,7 @@ SNAPSHOT: dict[str, Any] = {
 
 @pytest.fixture
 def repository(migrated_database: Database) -> PostgresCompetitorRepository:
-    config = ApiConfiguration(
+    config = APIConfiguration(
         recent_change_hours=24, snapshots_page_size=PAGE_SIZE, snapshots_max_page_size=MAX_PAGE_SIZE
     )
     return PostgresCompetitorRepository(migrated_database.engine, config)

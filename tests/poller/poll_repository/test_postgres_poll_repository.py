@@ -8,7 +8,7 @@ from sqlalchemy import Engine, func, select
 from sqlalchemy.dialects.postgresql import insert
 
 from competitor_pulse.app.competitor_repository import PostgresCompetitorRepository
-from competitor_pulse.configuration import ApiConfiguration
+from competitor_pulse.configuration import APIConfiguration
 from competitor_pulse.database import Database
 from competitor_pulse.errors import PollIncomplete, PollNotFound, PollTimeout
 from competitor_pulse.models import ChangeView, Listing, PollResult
@@ -40,7 +40,7 @@ def poll_repository(migrated_database: Database) -> PostgresPollRepository:
 @pytest.fixture
 def competitor_repository(migrated_database: Database) -> PostgresCompetitorRepository:
     # Adds and removes competitors and reads their snapshots, as the API does.
-    return PostgresCompetitorRepository(migrated_database.engine, ApiConfiguration())
+    return PostgresCompetitorRepository(migrated_database.engine, APIConfiguration())
 
 
 INTERVAL = timedelta(minutes=15)

@@ -6,10 +6,10 @@ import httpx2 as httpx
 import pytest
 
 from competitor_pulse.poller.listing_source import (
-    HttpListingSource,
+    HTTPListingSource,
     ListingNotFoundError,
     SourceConnectionError,
-    SourceHttpError,
+    SourceHTTPError,
     SourceInvalidBodyError,
     SourceRateLimitedError,
     SourceTimeoutError,
@@ -30,18 +30,18 @@ BODY = {
 }
 
 
-def source(handler: Callable[[httpx.Request], httpx.Response]) -> HttpListingSource:
+def source(handler: Callable[[httpx.Request], httpx.Response]) -> HTTPListingSource:
     client = httpx.AsyncClient(
         base_url="http://source.test", transport=httpx.MockTransport(handler)
     )
-    return HttpListingSource(client, TIMEOUT_SECONDS)
+    return HTTPListingSource(client, TIMEOUT_SECONDS)
 
 
-def answer(response: httpx.Response) -> HttpListingSource:
+def answer(response: httpx.Response) -> HTTPListingSource:
     return source(lambda _request: response)
 
 
-def fail_with(error: Exception) -> HttpListingSource:
+def fail_with(error: Exception) -> HTTPListingSource:
     def handler(request: httpx.Request) -> httpx.Response:
         raise error
 
@@ -105,7 +105,7 @@ async def test_rate_limited(headers: dict[str, str], retry_after_seconds: float 
     ],
 )
 async def test_unexpected_status(response: httpx.Response):
-    with pytest.raises(SourceHttpError) as err:
+    with pytest.raises(SourceHTTPError) as err:
         await answer(response).fetch("acme-crm")
 
     assert err.value.status == response.status_code
@@ -144,7 +144,7 @@ async def test_timeout_bounds_the_whole_request():
     )
 
     with pytest.raises(SourceTimeoutError) as err:
-        await HttpListingSource(client, 0.05).fetch("acme-crm")
+        await HTTPListingSource(client, 0.05).fetch("acme-crm")
 
     assert err.value.after_seconds == 0.05
 

@@ -6,8 +6,8 @@ from service_kit.logging import configure_logger, logger
 from competitor_pulse.configuration import load_configuration
 from competitor_pulse.database import Database
 from competitor_pulse.poller.cleaner import Cleaner
-from competitor_pulse.poller.listing_source import HttpListingSource
-from competitor_pulse.poller.llm_client import OpenAiLlmClient
+from competitor_pulse.poller.listing_source import HTTPListingSource
+from competitor_pulse.poller.llm_client import OpenAILLMClient
 from competitor_pulse.poller.poll_repository import PostgresPollRepository
 from competitor_pulse.poller.poller import Poller
 from competitor_pulse.poller.rate_limiter import RateLimiter
@@ -26,7 +26,7 @@ async def run() -> None:
     logger.info("Poller configuration", config=config)
 
     database = Database.from_configuration(config.database)
-    source = HttpListingSource.from_configuration(config.source)
+    source = HTTPListingSource.from_configuration(config.source)
     poller = Poller(
         PostgresPollRepository(database.engine),
         source,
@@ -34,7 +34,7 @@ async def run() -> None:
         config.poller,
     )
     cleaner = Cleaner(PostgresRetentionRepository(database.engine), config.cleaner)
-    llm = OpenAiLlmClient.from_configuration(config.llm)
+    llm = OpenAILLMClient.from_configuration(config.llm)
     summarizer = Summarizer(PostgresSummaryRepository(database.engine), llm, config.llm)
 
     current = asyncio.current_task()

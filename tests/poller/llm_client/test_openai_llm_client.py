@@ -7,11 +7,11 @@ import httpx2 as httpx
 import pytest
 
 from competitor_pulse.poller.llm_client import (
-    LlmConnectionError,
-    LlmHttpError,
-    LlmTimeoutError,
-    LlmUnusableAnswerError,
-    OpenAiLlmClient,
+    LLMConnectionError,
+    LLMHTTPError,
+    LLMTimeoutError,
+    LLMUnusableAnswerError,
+    OpenAILLMClient,
 )
 
 pytestmark = pytest.mark.anyio
@@ -34,16 +34,16 @@ def completion(content: Any, finish_reason: str = "stop") -> dict:
     }
 
 
-def client(handler: Callable[[httpx.Request], httpx.Response]) -> OpenAiLlmClient:
+def client(handler: Callable[[httpx.Request], httpx.Response]) -> OpenAILLMClient:
     http = httpx.AsyncClient(base_url="http://llm.test/v1/", transport=httpx.MockTransport(handler))
-    return OpenAiLlmClient(http, "mock-llm", TIMEOUT_SECONDS, MAX_TOKENS, MAX_ANSWER_CHARS)
+    return OpenAILLMClient(http, "mock-llm", TIMEOUT_SECONDS, MAX_TOKENS, MAX_ANSWER_CHARS)
 
 
-def answer(response: httpx.Response) -> OpenAiLlmClient:
+def answer(response: httpx.Response) -> OpenAILLMClient:
     return client(lambda _request: response)
 
 
-def fail_with(error: Exception) -> OpenAiLlmClient:
+def fail_with(error: Exception) -> OpenAILLMClient:
     def handler(request: httpx.Request) -> httpx.Response:
         raise error
 
@@ -75,14 +75,14 @@ async def test_asks_the_chat_completions_api_and_returns_the_answer():
 
 @pytest.mark.parametrize("status", [500, 503, 401, 404])
 async def test_http_error(status: int):
-    with pytest.raises(LlmHttpError) as err:
+    with pytest.raises(LLMHTTPError) as err:
         await answer(httpx.Response(status, json={"error": {"message": "nope"}})).complete("", "")
 
     assert err.value.status == status
 
 
 async def test_timeout():
-    with pytest.raises(LlmTimeoutError) as err:
+    with pytest.raises(LLMTimeoutError) as err:
         await fail_with(httpx.ReadTimeout("no answer")).complete("", "")
 
     assert err.value.after_seconds == TIMEOUT_SECONDS
@@ -99,9 +99,9 @@ async def test_timeout_bounds_the_whole_call():
         base_url="http://llm.test/v1/",
         transport=httpx.MockTransport(lambda _request: httpx.Response(200, content=slow_body())),
     )
-    llm = OpenAiLlmClient(http, "mock-llm", 0.05, MAX_TOKENS, MAX_ANSWER_CHARS)
+    llm = OpenAILLMClient(http, "mock-llm", 0.05, MAX_TOKENS, MAX_ANSWER_CHARS)
 
-    with pytest.raises(LlmTimeoutError) as err:
+    with pytest.raises(LLMTimeoutError) as err:
         await llm.complete("", "")
 
     assert err.value.after_seconds == 0.05
@@ -116,7 +116,7 @@ async def test_timeout_bounds_the_whole_call():
     ],
 )
 async def test_connection_error(error: Exception):
-    with pytest.raises(LlmConnectionError):
+    with pytest.raises(LLMConnectionError):
         await fail_with(error).complete("", "")
 
 
@@ -145,7 +145,7 @@ async def test_connection_error(error: Exception):
     ],
 )
 async def test_unusable_answer(response: httpx.Response):
-    with pytest.raises(LlmUnusableAnswerError):
+    with pytest.raises(LLMUnusableAnswerError):
         await answer(response).complete("", "")
 
 

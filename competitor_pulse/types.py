@@ -18,7 +18,7 @@ COMPETITOR_ID_PATTERN: Final = r"^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$"
 
 # Lowercase slugs like "acme-crm". The id goes into the source URL (/listings/{id}), so
 # slashes, dots and other path characters must never get through.
-CompetitorId: TypeAlias = Annotated[str, StringConstraints(pattern=COMPETITOR_ID_PATTERN)]
+CompetitorID: TypeAlias = Annotated[str, StringConstraints(pattern=COMPETITOR_ID_PATTERN)]
 
 
 class PollOutcome(StrEnum):

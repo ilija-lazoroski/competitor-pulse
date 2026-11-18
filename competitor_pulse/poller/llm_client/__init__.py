@@ -1,9 +1,9 @@
 from competitor_pulse.poller.llm_client.errors import (
-    LlmConnectionError,
-    LlmError,
-    LlmHttpError,
-    LlmTimeoutError,
-    LlmUnusableAnswerError,
+    LLMConnectionError,
+    LLMError,
+    LLMHTTPError,
+    LLMTimeoutError,
+    LLMUnusableAnswerError,
 )
-from competitor_pulse.poller.llm_client.llm_client import LlmClient
-from competitor_pulse.poller.llm_client.openai_llm_client import OpenAiLlmClient
+from competitor_pulse.poller.llm_client.llm_client import LLMClient
+from competitor_pulse.poller.llm_client.openai_llm_client import OpenAILLMClient

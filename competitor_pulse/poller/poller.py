@@ -13,7 +13,7 @@ from competitor_pulse.poller.listing_source import (
 )
 from competitor_pulse.poller.poll_repository import PollRepository
 from competitor_pulse.poller.rate_limiter import RateLimiter
-from competitor_pulse.types import CompetitorId
+from competitor_pulse.types import CompetitorID
 
 
 def _utc_now() -> datetime:
@@ -59,7 +59,7 @@ class Poller:
                     await self._limiter.acquire()
                     polls.create_task(self._poll_and_release(competitor_id))
 
-    async def poll(self, competitor_id: CompetitorId) -> None:
+    async def poll(self, competitor_id: CompetitorID) -> None:
         """Fetches one competitor's listing and stores what happened as a snapshot.
 
         A 429 is not stored: the competitor goes back in the queue and every request pauses, for
@@ -90,7 +90,7 @@ class Poller:
         if not await self._repository.save_poll(competitor_id, result):
             logger.info("Poll dropped: competitor removed meanwhile", competitor_id=competitor_id)
 
-    async def _claim_due(self) -> list[CompetitorId]:
+    async def _claim_due(self) -> list[CompetitorID]:
         """Claims the next batch of due competitors; none if the database fails.
 
         :returns: The claimed competitors' ids
@@ -101,7 +101,7 @@ class Poller:
             logger.error("Claiming due competitors failed", error=str(err))
             return []
 
-    async def _poll_and_release(self, competitor_id: CompetitorId) -> None:
+    async def _poll_and_release(self, competitor_id: CompetitorID) -> None:
         """Polls one competitor, logs any failure and frees its in-flight slot.
 
         :param competitor_id: The competitor to poll

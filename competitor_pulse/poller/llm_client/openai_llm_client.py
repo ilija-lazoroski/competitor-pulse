@@ -5,14 +5,14 @@ from typing import Any, Final
 
 import httpx2 as httpx
 
-from competitor_pulse.configuration import LlmConfiguration
+from competitor_pulse.configuration import LLMConfiguration
 from competitor_pulse.poller.llm_client.errors import (
-    LlmConnectionError,
-    LlmHttpError,
-    LlmTimeoutError,
-    LlmUnusableAnswerError,
+    LLMConnectionError,
+    LLMHTTPError,
+    LLMTimeoutError,
+    LLMUnusableAnswerError,
 )
-from competitor_pulse.poller.llm_client.llm_client import LlmClient
+from competitor_pulse.poller.llm_client.llm_client import LLMClient
 from competitor_pulse.poller.summary_prompt import CLOSING_MARKER, OPENING_MARKER
 
 # A summary is shown as plain text: links and markup in an answer mean the model did not do
@@ -28,8 +28,8 @@ _MARKUP: Final = re.compile(
 )
 
 
-class OpenAiLlmClient(LlmClient):
-    """The LlmClient for an OpenAI-compatible Chat Completions API: the mock, Ollama and others.
+class OpenAILLMClient(LLMClient):
+    """The LLMClient for an OpenAI-compatible Chat Completions API: the mock, Ollama and others.
 
     It makes one request per call and never retries; the summarizer decides about retries,
     because every call counts against the daily cap.
@@ -50,7 +50,7 @@ class OpenAiLlmClient(LlmClient):
         self._max_answer_chars = max_answer_chars
 
     @classmethod
-    def from_configuration(cls, config: LlmConfiguration) -> "OpenAiLlmClient":
+    def from_configuration(cls, config: LLMConfiguration) -> "OpenAILLMClient":
         """Creates the client with its own HTTP client; close() closes it.
 
         :param config: The LLM settings
@@ -78,10 +78,10 @@ class OpenAiLlmClient(LlmClient):
         :param instructions: What the LLM is asked to do, sent as the system message
         :param prompt: The text to answer, sent as the user message
         :returns: The answer, without surrounding whitespace
-        :raises LlmTimeoutError: If the LLM does not answer in time
-        :raises LlmConnectionError: If the LLM cannot be reached or the request fails
-        :raises LlmHttpError: If the LLM answers with an HTTP error status
-        :raises LlmUnusableAnswerError: If the answer is missing, empty, cut off, too long, or
+        :raises LLMTimeoutError: If the LLM does not answer in time
+        :raises LLMConnectionError: If the LLM cannot be reached or the request fails
+        :raises LLMHTTPError: If the LLM answers with an HTTP error status
+        :raises LLMUnusableAnswerError: If the answer is missing, empty, cut off, too long, or
                                         not one plain-text paragraph
         """
         request = {
@@ -100,13 +100,13 @@ class OpenAiLlmClient(LlmClient):
             async with asyncio.timeout(self._timeout_seconds):
                 response = await self._client.post("chat/completions", json=request)
         except (httpx.TimeoutException, TimeoutError) as err:
-            raise LlmTimeoutError(self._timeout_seconds) from err
+            raise LLMTimeoutError(self._timeout_seconds) from err
         except httpx.RequestError as err:
             # Every other way the request can fail (connection, protocol, decoding, ...).
-            raise LlmConnectionError(str(err) or type(err).__name__) from err
+            raise LLMConnectionError(str(err) or type(err).__name__) from err
 
         if response.status_code != HTTPStatus.OK:
-            raise LlmHttpError(response.status_code)
+            raise LLMHTTPError(response.status_code)
         return self._answer(response)
 
     async def close(self) -> None:
@@ -118,30 +118,30 @@ class OpenAiLlmClient(LlmClient):
 
         :param response: The LLM's 200 response
         :returns: The answer, without surrounding whitespace
-        :raises LlmUnusableAnswerError: If the answer is missing, empty, cut off, too long, or
+        :raises LLMUnusableAnswerError: If the answer is missing, empty, cut off, too long, or
                                         not one plain-text paragraph
         """
         try:
             choice: dict[str, Any] = response.json()["choices"][0]
             content = choice["message"]["content"]
         except (ValueError, KeyError, IndexError, TypeError) as err:
-            raise LlmUnusableAnswerError("not a Chat Completions response") from err
+            raise LLMUnusableAnswerError("not a Chat Completions response") from err
 
         if not isinstance(content, str) or not content.strip():
-            raise LlmUnusableAnswerError("the answer is empty")
+            raise LLMUnusableAnswerError("the answer is empty")
         if choice.get("finish_reason") == "length":
-            raise LlmUnusableAnswerError("the answer was cut off")
+            raise LLMUnusableAnswerError("the answer was cut off")
         answer = content.strip()
         if len(answer) > self._max_answer_chars:
-            raise LlmUnusableAnswerError(
+            raise LLMUnusableAnswerError(
                 f"the answer is longer than {self._max_answer_chars} characters"
             )
         if "\n" in answer:
-            raise LlmUnusableAnswerError("the answer has more than one line")
+            raise LLMUnusableAnswerError("the answer has more than one line")
         if _LINK.search(answer):
-            raise LlmUnusableAnswerError("the answer contains a link")
+            raise LLMUnusableAnswerError("the answer contains a link")
         # An answer may repeat our own data markers, like the mock LLM, which echoes its prompt;
         # they are not markup a reader could be tricked by, so only other markup counts.
         if _MARKUP.search(answer.replace(OPENING_MARKER, "").replace(CLOSING_MARKER, "")):
-            raise LlmUnusableAnswerError("the answer contains Markdown or HTML")
+            raise LLMUnusableAnswerError("the answer contains Markdown or HTML")
         return answer

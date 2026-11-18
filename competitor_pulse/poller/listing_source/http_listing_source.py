@@ -8,17 +8,17 @@ from competitor_pulse.models import Listing
 from competitor_pulse.poller.listing_source.errors import (
     ListingNotFoundError,
     SourceConnectionError,
-    SourceHttpError,
+    SourceHTTPError,
     SourceInvalidBodyError,
     SourceRateLimitedError,
     SourceTimeoutError,
 )
 from competitor_pulse.poller.listing_source.listing_parser import parse_listing
 from competitor_pulse.poller.listing_source.listing_source import ListingSource
-from competitor_pulse.types import CompetitorId
+from competitor_pulse.types import CompetitorID
 
 
-class HttpListingSource(ListingSource):
+class HTTPListingSource(ListingSource):
     """The ListingSource over HTTP: GET <base_url>/listings/<id>, one request per fetch.
 
     It never retries: every request counts against the source's global rate limit, so the
@@ -30,7 +30,7 @@ class HttpListingSource(ListingSource):
         self._timeout_seconds = timeout_seconds
 
     @classmethod
-    def from_configuration(cls, config: SourceConfiguration) -> "HttpListingSource":
+    def from_configuration(cls, config: SourceConfiguration) -> "HTTPListingSource":
         """Creates the source with its own HTTP client; close() closes the client.
 
         :param config: The listing source settings
@@ -39,7 +39,7 @@ class HttpListingSource(ListingSource):
         client = httpx.AsyncClient(base_url=str(config.base_url), timeout=config.timeout_seconds)
         return cls(client, config.timeout_seconds)
 
-    async def fetch(self, competitor_id: CompetitorId) -> Listing:
+    async def fetch(self, competitor_id: CompetitorID) -> Listing:
         """Fetches a competitor's current listing with a single request.
 
         :param competitor_id: The competitor whose listing to fetch
@@ -47,7 +47,7 @@ class HttpListingSource(ListingSource):
                   missing_fields
         :raises ListingNotFoundError: If the source does not list the competitor
         :raises SourceRateLimitedError: If the source rate limits the request
-        :raises SourceHttpError: If the source answers with another unexpected status
+        :raises SourceHTTPError: If the source answers with another unexpected status
         :raises SourceTimeoutError: If the source does not answer in time
         :raises SourceConnectionError: If the source cannot be reached or the request fails
         :raises SourceInvalidBodyError: If the source answers 200 without a JSON object
@@ -71,7 +71,7 @@ class HttpListingSource(ListingSource):
             case HTTPStatus.TOO_MANY_REQUESTS:
                 raise SourceRateLimitedError(_retry_after_seconds(response))
             case status:
-                raise SourceHttpError(status)
+                raise SourceHTTPError(status)
 
     async def close(self) -> None:
         """Closes the HTTP client and its connections."""
