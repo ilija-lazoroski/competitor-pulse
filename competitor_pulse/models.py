@@ -6,7 +6,7 @@ from pydantic import Field
 from pydantic.alias_generators import to_camel
 from service_kit import ServiceKitBaseModel
 
-from competitor_pulse.errors import PollError
+from competitor_pulse.errors import PollFailure
 from competitor_pulse.types import (
     Changes,
     CompetitorID,
@@ -90,7 +90,7 @@ class PollResult(ServiceKitBaseModel):
 
     fetched_at: datetime
     outcome: PollOutcome
-    error: PollError | None = Field(description="Why the listing is missing or incomplete")
+    error: PollFailure | None = Field(description="Why the listing is missing or incomplete")
     listing: Listing | None = Field(description="The listing, if the source sent one")
 
 

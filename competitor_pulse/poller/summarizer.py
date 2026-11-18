@@ -3,7 +3,7 @@ import asyncio
 from service_kit.logging import logger
 
 from competitor_pulse.configuration import LLMConfiguration
-from competitor_pulse.errors import summary_error_adapter
+from competitor_pulse.errors import summary_failure_adapter
 from competitor_pulse.models import PendingSummary
 from competitor_pulse.poller.llm_client import (
     LLMClient,
@@ -96,7 +96,7 @@ class Summarizer:
         :param unusable: True if the LLM answered with something unusable
         """
         logger.warning("No summary", snapshot_id=change.snapshot_id, error=err.message)
-        record = summary_error_adapter.validate_python(err.structured_error)
+        record = summary_failure_adapter.validate_python(err.structured_error)
         await self._repository.save_failure(change.snapshot_id, record, unusable)
 
     def _others_in_flight(self, change: PendingSummary) -> set[int]:

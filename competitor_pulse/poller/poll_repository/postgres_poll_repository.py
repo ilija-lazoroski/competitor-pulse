@@ -4,7 +4,7 @@ from typing import Any, Final
 from sqlalchemy import Row, func, select
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
-from competitor_pulse.errors import poll_error_adapter
+from competitor_pulse.errors import poll_failure_adapter
 from competitor_pulse.models import ListingValues, PollResult
 from competitor_pulse.poller.change_detection import ChangeDecision, decide, remember
 from competitor_pulse.poller.poll_repository.poll_repository import PollRepository
@@ -141,7 +141,7 @@ def _snapshot_values(result: PollResult, decision: ChangeDecision) -> dict[str, 
         "fetched_at": result.fetched_at,
         "outcome": result.outcome,
         "error": (
-            poll_error_adapter.dump_python(result.error, mode="json") if result.error else None
+            poll_failure_adapter.dump_python(result.error, mode="json") if result.error else None
         ),
         "title": listing.title if listing else None,
         "tagline": listing.tagline if listing else None,

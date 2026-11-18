@@ -1,7 +1,7 @@
 """How a call to the LLM can fail.
 
-Each error's structured_error has the fields of its record in competitor_pulse.errors, so the
-summarizer can store it with summary_error_adapter.validate_python(err.structured_error).
+Each error's structured_error has the fields of its failure record in competitor_pulse.errors,
+so the summarizer can store it with summary_failure_adapter.validate_python(err.structured_error).
 """
 
 from http import HTTPStatus

@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from competitor_pulse.errors import PollHTTPError, PollIncomplete, PollNotFound, PollTimeout
+from competitor_pulse.errors import PollHTTPStatus, PollIncomplete, PollNotFound, PollTimeout
 from competitor_pulse.models import Listing
 from competitor_pulse.poller.listing_source import (
     ListingNotFoundError,
@@ -58,7 +58,7 @@ def test_not_found_is_its_own_outcome():
     ("error", "record"),
     [
         (SourceTimeoutError(10), PollTimeout),
-        (SourceHTTPError(503), PollHTTPError),
+        (SourceHTTPError(503), PollHTTPStatus),
         (SourceConnectionError("connection refused"), None),
         (SourceInvalidBodyError("the body is not JSON"), None),
     ],

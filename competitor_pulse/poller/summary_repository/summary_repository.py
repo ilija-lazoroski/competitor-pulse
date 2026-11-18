@@ -1,7 +1,7 @@
 from collections.abc import Collection
 from typing import Protocol
 
-from competitor_pulse.errors import SummaryError
+from competitor_pulse.errors import SummaryFailure
 from competitor_pulse.models import PendingSummary
 
 
@@ -33,7 +33,7 @@ class SummaryRepository(Protocol):
         """
         ...
 
-    async def save_failure(self, snapshot_id: int, error: SummaryError, unusable: bool) -> None:
+    async def save_failure(self, snapshot_id: int, error: SummaryFailure, unusable: bool) -> None:
         """Stores why a snapshot gets no summary, if the snapshot still waits for one.
 
         :param snapshot_id: The snapshot whose change could not be summarized

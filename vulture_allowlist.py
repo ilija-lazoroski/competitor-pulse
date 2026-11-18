@@ -54,19 +54,19 @@ to_sqlalchemy_url
 
 # Step 1 (data model): used by the poller, the LLM worker and the API in the next steps.
 from competitor_pulse.errors import (  # noqa: E402
-    ErrorRecord,
-    PollConnectionError,
-    PollHTTPError,
+    FailureRecord,
+    PollConnectionFailed,
+    PollHTTPStatus,
     PollIncomplete,
     PollInvalidBody,
     PollRateLimited,
     PollTimeout,
-    SummaryConnectionError,
-    SummaryHTTPError,
+    SummaryConnectionFailed,
+    SummaryHTTPStatus,
     SummaryTimeout,
     SummaryUnusableAnswer,
-    poll_error_adapter,
-    summary_error_adapter,
+    poll_failure_adapter,
+    summary_failure_adapter,
 )
 from competitor_pulse.tables import snapshots  # noqa: E402
 from competitor_pulse.types import (  # noqa: E402
@@ -105,16 +105,16 @@ Price.currency
 Price.period
 Price.unit
 Price._only_paid_prices_have_currency_period_and_unit
-ErrorRecord.message
-SummaryConnectionError.kind
-SummaryHTTPError.kind
-SummaryHTTPError.status
+FailureRecord.message
+SummaryConnectionFailed.kind
+SummaryHTTPStatus.kind
+SummaryHTTPStatus.status
 SummaryTimeout.kind
 SummaryTimeout.after_seconds
 SummaryUnusableAnswer.kind
-PollConnectionError.kind
-PollHTTPError.kind
-PollHTTPError.status
+PollConnectionFailed.kind
+PollHTTPStatus.kind
+PollHTTPStatus.status
 PollIncomplete.kind
 PollIncomplete.fields
 PollInvalidBody.kind
@@ -123,8 +123,8 @@ PollRateLimited.retry_after_seconds
 PollTimeout.kind
 PollTimeout.after_seconds
 changes_adapter
-poll_error_adapter
-summary_error_adapter
+poll_failure_adapter
+summary_failure_adapter
 snapshots
 
 from competitor_pulse.configuration import SourceConfiguration  # noqa: E402

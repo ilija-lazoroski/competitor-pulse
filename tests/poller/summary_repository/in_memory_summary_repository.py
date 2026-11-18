@@ -1,6 +1,6 @@
 from collections.abc import Collection
 
-from competitor_pulse.errors import SummaryError
+from competitor_pulse.errors import SummaryFailure
 from competitor_pulse.models import PendingSummary
 
 
@@ -11,7 +11,7 @@ class InMemorySummaryRepository:
         self._pending = {change.snapshot_id: change for change in pending}
         self.reservations = 0
         self.summaries: dict[int, str] = {}
-        self.failures: dict[int, tuple[SummaryError, bool]] = {}
+        self.failures: dict[int, tuple[SummaryFailure, bool]] = {}
         self.cap_reached: set[int] = set()
 
     async def pending(self, limit: int, exclude: Collection[int]) -> list[PendingSummary]:
@@ -28,7 +28,7 @@ class InMemorySummaryRepository:
         if self._pending.pop(snapshot_id, None):
             self.summaries[snapshot_id] = summary
 
-    async def save_failure(self, snapshot_id: int, error: SummaryError, unusable: bool) -> None:
+    async def save_failure(self, snapshot_id: int, error: SummaryFailure, unusable: bool) -> None:
         if self._pending.pop(snapshot_id, None):
             self.failures[snapshot_id] = (error, unusable)
 

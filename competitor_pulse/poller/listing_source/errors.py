@@ -1,7 +1,7 @@
 """How fetching a listing from the source can fail.
 
-Each error's structured_error has the fields of its record in competitor_pulse.errors, so the
-poller can store it with poll_error_adapter.validate_python(err.structured_error).
+Each error's structured_error has the fields of its failure record in competitor_pulse.errors,
+so the poller can store it with poll_failure_adapter.validate_python(err.structured_error).
 """
 
 from competitor_pulse.errors import CompetitorPulseError

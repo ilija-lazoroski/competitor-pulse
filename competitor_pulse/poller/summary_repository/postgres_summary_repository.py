@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy.types import Date
 
-from competitor_pulse.errors import SummaryError, summary_error_adapter
+from competitor_pulse.errors import SummaryFailure, summary_failure_adapter
 from competitor_pulse.models import PendingSummary
 from competitor_pulse.poller.summary_repository.summary_repository import SummaryRepository
 from competitor_pulse.tables import llm_usage, snapshots
@@ -64,7 +64,7 @@ class PostgresSummaryRepository(SummaryRepository):
                 .values(summary=summary, summary_status=SummaryStatus.READY)
             )
 
-    async def save_failure(self, snapshot_id: int, error: SummaryError, unusable: bool) -> None:
+    async def save_failure(self, snapshot_id: int, error: SummaryFailure, unusable: bool) -> None:
         status = SummaryStatus.LLM_UNUSABLE if unusable else SummaryStatus.LLM_FAILED
         async with self._engine.begin() as connection:
             await connection.execute(
@@ -72,7 +72,7 @@ class PostgresSummaryRepository(SummaryRepository):
                 .where(snapshots.c.id == snapshot_id, _pending)
                 .values(
                     summary_status=status,
-                    summary_error=summary_error_adapter.dump_python(error, mode="json"),
+                    summary_error=summary_failure_adapter.dump_python(error, mode="json"),
                 )
             )
 

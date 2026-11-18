@@ -4,7 +4,7 @@ from contextlib import suppress
 import pytest
 
 from competitor_pulse.configuration import LLMConfiguration
-from competitor_pulse.errors import SummaryHTTPError, SummaryTimeout, SummaryUnusableAnswer
+from competitor_pulse.errors import SummaryHTTPStatus, SummaryTimeout, SummaryUnusableAnswer
 from competitor_pulse.models import PendingSummary
 from competitor_pulse.poller.llm_client import LLMHTTPError, LLMTimeoutError, LLMUnusableAnswerError
 from competitor_pulse.poller.summarizer import Summarizer
@@ -83,7 +83,7 @@ async def test_http_error_that_would_fail_again_is_stored_without_another_attemp
 
     assert repository.failures == {
         1: (
-            SummaryHTTPError(message=f"The LLM answered with HTTP {status}", status=status),
+            SummaryHTTPStatus(message=f"The LLM answered with HTTP {status}", status=status),
             False,
         )
     }
