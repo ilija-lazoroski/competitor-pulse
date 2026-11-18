@@ -314,12 +314,12 @@ adapters and hand them in.
 
 | Port (`Protocol`) | Adapter | Used by | Replaced in tests by |
 |---|---|---|---|
-| `CompetitorRepository` | `PostgresCompetitorRepository` | the API's endpoints | `FakeCompetitorRepository` |
-| `PollRepository` | `PostgresPollRepository` | the Poller | `FakePollRepository` |
-| `SummaryRepository` | `PostgresSummaryRepository` | the Summarizer | `FakeSummaryRepository` |
-| `RetentionRepository` | `PostgresRetentionRepository` | the Cleaner | `FakeRetentionRepository` |
-| `ListingSource` | `HTTPListingSource` | the Poller | `FakeListingSource` |
-| `LLMClient` | `OpenAILLMClient` | the Summarizer | `FakeLLM` |
+| `CompetitorRepository` | `PostgresCompetitorRepository` | the API's endpoints | `InMemoryCompetitorRepository` |
+| `PollRepository` | `PostgresPollRepository` | the Poller | `SpyPollRepository` |
+| `SummaryRepository` | `PostgresSummaryRepository` | the Summarizer | `InMemorySummaryRepository` |
+| `RetentionRepository` | `PostgresRetentionRepository` | the Cleaner | `SpyRetentionRepository` |
+| `ListingSource` | `HTTPListingSource` | the Poller | `SpyListingSource` |
+| `LLMClient` | `OpenAILLMClient` | the Summarizer | `SpyLLM` |
 
 Why this shape:
 
@@ -331,7 +331,7 @@ Why this shape:
   ...); a database that is down is the exception: its error is not wrapped, and is logged where the
   poller's tasks catch everything.
 - **Logic is tested without the infrastructure.** The endpoints, the Poller, the Summarizer and the
-  Cleaner run in their tests against in-memory fakes, so the tests check our decisions (a 429 is
+  Cleaner run in their tests against fakes and spies, so the tests check our decisions (a 429 is
   requeued, an unusable answer is not retried, the cap marks every waiting change) quickly, with no
   database or network. Each adapter has its own tests against what it really talks to: a real
   PostgreSQL, or an HTTP mock of the source and the LLM.

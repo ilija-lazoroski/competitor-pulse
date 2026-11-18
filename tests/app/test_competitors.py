@@ -9,7 +9,9 @@ from competitor_pulse.app.dependencies import competitor_repository
 from competitor_pulse.app.main import app
 from competitor_pulse.models import ChangeView, Snapshot
 from competitor_pulse.types import ListingField, PollOutcome, SummaryStatus
-from tests.app.competitor_repository.fake_competitor_repository import FakeCompetitorRepository
+from tests.app.competitor_repository.in_memory_competitor_repository import (
+    InMemoryCompetitorRepository,
+)
 
 SNAPSHOT = Snapshot(
     id=7,
@@ -29,8 +31,8 @@ SNAPSHOT = Snapshot(
 
 
 @pytest.fixture
-def repository() -> Iterator[FakeCompetitorRepository]:
-    fake = FakeCompetitorRepository()
+def repository() -> Iterator[InMemoryCompetitorRepository]:
+    fake = InMemoryCompetitorRepository()
     app.dependency_overrides[competitor_repository] = lambda: fake
     yield fake
 
@@ -39,7 +41,7 @@ def repository() -> Iterator[FakeCompetitorRepository]:
 
 
 def test_competitors_are_listed_in_camel_case(
-    api_client: TestClient, repository: FakeCompetitorRepository
+    api_client: TestClient, repository: InMemoryCompetitorRepository
 ):
     repository.track("acme-crm")
 
@@ -57,7 +59,7 @@ def test_competitors_are_listed_in_camel_case(
 
 
 def test_snapshots_are_listed_in_camel_case(
-    api_client: TestClient, repository: FakeCompetitorRepository
+    api_client: TestClient, repository: InMemoryCompetitorRepository
 ):
     repository.track("acme-crm", snapshots=[SNAPSHOT])
 
@@ -84,7 +86,7 @@ def test_snapshots_are_listed_in_camel_case(
 
 
 def test_snapshots_pass_limit_and_cursor(
-    api_client: TestClient, repository: FakeCompetitorRepository
+    api_client: TestClient, repository: InMemoryCompetitorRepository
 ):
     repository.track("acme-crm")
 
@@ -96,7 +98,7 @@ def test_snapshots_pass_limit_and_cursor(
 # --- success statuses ---
 
 
-def test_add_competitor(api_client: TestClient, repository: FakeCompetitorRepository):
+def test_add_competitor(api_client: TestClient, repository: InMemoryCompetitorRepository):
     response = api_client.post("/api/competitors", json={"id": "acme-crm"})
 
     assert response.status_code == HTTPStatus.CREATED
@@ -104,7 +106,7 @@ def test_add_competitor(api_client: TestClient, repository: FakeCompetitorReposi
     assert repository.is_tracked("acme-crm")
 
 
-def test_remove_competitor(api_client: TestClient, repository: FakeCompetitorRepository):
+def test_remove_competitor(api_client: TestClient, repository: InMemoryCompetitorRepository):
     repository.track("acme-crm")
 
     response = api_client.delete("/api/competitors/acme-crm")
@@ -117,7 +119,7 @@ def test_remove_competitor(api_client: TestClient, repository: FakeCompetitorRep
 
 
 def test_already_tracked_is_a_conflict(
-    api_client: TestClient, repository: FakeCompetitorRepository
+    api_client: TestClient, repository: InMemoryCompetitorRepository
 ):
     repository.track("acme-crm")
 
@@ -133,7 +135,7 @@ def test_already_tracked_is_a_conflict(
     [("DELETE", "/api/competitors/acme-crm"), ("GET", "/api/competitors/acme-crm/snapshots")],
 )
 def test_not_tracked_is_not_found(
-    api_client: TestClient, repository: FakeCompetitorRepository, method: str, path: str
+    api_client: TestClient, repository: InMemoryCompetitorRepository, method: str, path: str
 ):
     response = api_client.request(method, path)
 
@@ -142,7 +144,7 @@ def test_not_tracked_is_not_found(
 
 
 def test_page_size_above_maximum_is_rejected(
-    api_client: TestClient, repository: FakeCompetitorRepository
+    api_client: TestClient, repository: InMemoryCompetitorRepository
 ):
     repository.track("acme-crm")
 
@@ -157,7 +159,7 @@ def test_page_size_above_maximum_is_rejected(
 
 @pytest.mark.parametrize("competitor_id", ["a", "acme-crm", "crm2", "a" * 64])
 def test_valid_ids_are_accepted(
-    api_client: TestClient, repository: FakeCompetitorRepository, competitor_id: str
+    api_client: TestClient, repository: InMemoryCompetitorRepository, competitor_id: str
 ):
     response = api_client.post("/api/competitors", json={"id": competitor_id})
 
@@ -169,7 +171,7 @@ def test_valid_ids_are_accepted(
     ["", "Acme-CRM", "-acme", "acme-", "acme crm", "../control", "acme/crm", "a" * 65],
 )
 def test_invalid_ids_are_rejected(
-    api_client: TestClient, repository: FakeCompetitorRepository, competitor_id: str
+    api_client: TestClient, repository: InMemoryCompetitorRepository, competitor_id: str
 ):
     response = api_client.post("/api/competitors", json={"id": competitor_id})
 
@@ -181,7 +183,7 @@ def test_invalid_ids_are_rejected(
     [("DELETE", "/api/competitors/Acme"), ("GET", "/api/competitors/acme-/snapshots")],
 )
 def test_invalid_id_in_path_is_rejected(
-    api_client: TestClient, repository: FakeCompetitorRepository, method: str, path: str
+    api_client: TestClient, repository: InMemoryCompetitorRepository, method: str, path: str
 ):
     response = api_client.request(method, path)
 

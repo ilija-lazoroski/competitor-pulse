@@ -7,7 +7,9 @@ from competitor_pulse.app.dependencies import database
 from competitor_pulse.app.main import app
 
 
-class FakeDatabase:
+class StubDatabase:
+    """A stub: the ping succeeds, or raises the given error."""
+
     def __init__(self, error: Exception | None = None):
         self._error = error
 
@@ -16,8 +18,8 @@ class FakeDatabase:
             raise self._error
 
 
-def use_database(fake: FakeDatabase):
-    app.dependency_overrides[database] = lambda: fake
+def use_database(stub: StubDatabase):
+    app.dependency_overrides[database] = lambda: stub
 
 
 def test_health_returns_ok(api_client: TestClient):
@@ -28,7 +30,7 @@ def test_health_returns_ok(api_client: TestClient):
 
 
 def test_health_db_ok(api_client: TestClient):
-    use_database(FakeDatabase())
+    use_database(StubDatabase())
 
     response = api_client.get("/health/db")
 
@@ -38,7 +40,7 @@ def test_health_db_ok(api_client: TestClient):
 
 @pytest.mark.parametrize("error", [OSError("connection refused"), TimeoutError()])
 def test_health_db_unavailable(api_client: TestClient, error: Exception):
-    use_database(FakeDatabase(error))
+    use_database(StubDatabase(error))
 
     response = api_client.get("/health/db")
 

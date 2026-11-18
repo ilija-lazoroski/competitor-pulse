@@ -4,7 +4,7 @@ import pytest
 
 from competitor_pulse.configuration import CleanerConfiguration
 from competitor_pulse.poller.cleaner import Cleaner
-from tests.poller.retention_repository.fake_retention_repository import FakeRetentionRepository
+from tests.poller.retention_repository.spy_retention_repository import SpyRetentionRepository
 
 pytestmark = pytest.mark.anyio
 
@@ -12,7 +12,7 @@ CONFIG = CleanerConfiguration(retention_days=90, interval_seconds=3600, batch_si
 
 
 async def test_old_snapshots_are_deleted_in_batches_then_removed_competitors():
-    repository = FakeRetentionRepository(old_snapshots=7, removed_competitors=2)
+    repository = SpyRetentionRepository(old_snapshots=7, removed_competitors=2)
 
     deleted = await Cleaner(repository, CONFIG).clean()
 
@@ -21,7 +21,7 @@ async def test_old_snapshots_are_deleted_in_batches_then_removed_competitors():
 
 
 async def test_a_full_last_batch_is_followed_by_an_empty_one():
-    repository = FakeRetentionRepository(old_snapshots=6)
+    repository = SpyRetentionRepository(old_snapshots=6)
 
     await Cleaner(repository, CONFIG).clean()
 
@@ -29,7 +29,7 @@ async def test_a_full_last_batch_is_followed_by_an_empty_one():
 
 
 async def test_a_failed_round_is_retried_after_the_interval():
-    repository = FakeRetentionRepository(old_snapshots=2, failures=1)
+    repository = SpyRetentionRepository(old_snapshots=2, failures=1)
     sleeps: list[float] = []
 
     async def sleep(seconds: float) -> None:

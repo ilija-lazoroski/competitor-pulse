@@ -1,8 +1,8 @@
 from datetime import timedelta
 
 
-class FakeRetentionRepository:
-    """Holds a number of old snapshots and removed competitors; can fail a number of rounds."""
+class SpyRetentionRepository:
+    """A spy: deletes from given counts, can fail a number of rounds, and records each batch."""
 
     def __init__(self, old_snapshots: int = 0, removed_competitors: int = 0, failures: int = 0):
         self.old_snapshots = old_snapshots

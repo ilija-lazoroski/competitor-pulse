@@ -14,8 +14,8 @@ from competitor_pulse.poller.listing_source import (
 from competitor_pulse.poller.poller import Poller
 from competitor_pulse.poller.rate_limiter import RateLimiter
 from competitor_pulse.types import CompetitorID, PollOutcome
-from tests.poller.listing_source.fake_listing_source import FakeListingSource
-from tests.poller.poll_repository.fake_poll_repository import FakePollRepository
+from tests.poller.listing_source.spy_listing_source import SpyListingSource
+from tests.poller.poll_repository.spy_poll_repository import SpyPollRepository
 
 pytestmark = pytest.mark.anyio
 
@@ -48,8 +48,8 @@ class RecordingRateLimiter(RateLimiter):
 
 
 def poller(
-    repository: FakePollRepository,
-    source: FakeListingSource,
+    repository: SpyPollRepository,
+    source: SpyListingSource,
     limiter: RateLimiter | None = None,
 ) -> Poller:
     return Poller(
@@ -57,15 +57,15 @@ def poller(
     )
 
 
-def outcomes(repository: FakePollRepository) -> dict[str, PollOutcome]:
+def outcomes(repository: SpyPollRepository) -> dict[str, PollOutcome]:
     return {competitor_id: result.outcome for competitor_id, result in repository.saved}
 
 
 async def test_listing_is_saved_as_a_snapshot():
-    repository = FakePollRepository()
+    repository = SpyPollRepository()
     repository.tracked.add("acme-crm")
 
-    await poller(repository, FakeListingSource({"acme-crm": LISTING})).poll("acme-crm")
+    await poller(repository, SpyListingSource({"acme-crm": LISTING})).poll("acme-crm")
 
     assert repository.saved == [
         (
@@ -76,10 +76,10 @@ async def test_listing_is_saved_as_a_snapshot():
 
 
 async def test_source_errors_are_saved_as_snapshots():
-    repository = FakePollRepository()
+    repository = SpyPollRepository()
     repository.tracked.add("gone")
     repository.tracked.add("slow")
-    source = FakeListingSource(
+    source = SpyListingSource(
         {"gone": ListingNotFoundError("gone"), "slow": SourceTimeoutError(10)}
     )
 
@@ -93,10 +93,10 @@ async def test_source_errors_are_saved_as_snapshots():
 async def test_rate_limited_poll_is_requeued_and_pauses_requests(
     retry_after: float | None, pause: float
 ):
-    repository = FakePollRepository()
+    repository = SpyPollRepository()
     repository.tracked.add("acme-crm")
     limiter = RecordingRateLimiter()
-    source = FakeListingSource({"acme-crm": SourceRateLimitedError(retry_after)})
+    source = SpyListingSource({"acme-crm": SourceRateLimitedError(retry_after)})
 
     await poller(repository, source, limiter).poll("acme-crm")
 
@@ -106,7 +106,7 @@ async def test_rate_limited_poll_is_requeued_and_pauses_requests(
 
 
 async def test_run_polls_every_due_competitor_and_survives_a_failing_save():
-    class FailingSaveRepository(FakePollRepository):
+    class FailingSaveRepository(SpyPollRepository):
         async def save_poll(self, competitor_id: CompetitorID, result: PollResult) -> bool:
             if competitor_id == "broken":
                 raise ConnectionError("database is down")
@@ -116,7 +116,7 @@ async def test_run_polls_every_due_competitor_and_survives_a_failing_save():
     for competitor_id in ["acme-crm", "broken", "orbit-hr"]:
         repository.tracked.add(competitor_id)
     repository.due = ["acme-crm", "broken", "orbit-hr"]
-    source = FakeListingSource({id_: LISTING for id_ in repository.due})
+    source = SpyListingSource({id_: LISTING for id_ in repository.due})
 
     running = asyncio.create_task(poller(repository, source).run())
     while len(source.fetched) < 3 or len(repository.saved) < 2:

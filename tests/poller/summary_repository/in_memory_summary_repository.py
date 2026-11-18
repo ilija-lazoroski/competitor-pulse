@@ -4,12 +4,11 @@ from competitor_pulse.errors import SummaryError
 from competitor_pulse.models import PendingSummary
 
 
-class FakeSummaryRepository:
-    """In memory: a list of pending changes, the calls left today, and what was stored."""
+class InMemorySummaryRepository:
+    """A fake: in memory, with the pending changes, today's reserved calls and what was stored."""
 
-    def __init__(self, pending: list[PendingSummary], calls_left: int = 1000):
+    def __init__(self, pending: list[PendingSummary]):
         self._pending = {change.snapshot_id: change for change in pending}
-        self.calls_left = calls_left
         self.reservations = 0
         self.summaries: dict[int, str] = {}
         self.failures: dict[int, tuple[SummaryError, bool]] = {}
@@ -20,9 +19,8 @@ class FakeSummaryRepository:
         return sorted(waiting, key=lambda c: c.snapshot_id, reverse=True)[:limit]
 
     async def reserve_llm_call(self, daily_cap: int) -> bool:
-        if self.calls_left == 0:
+        if self.reservations >= daily_cap:
             return False
-        self.calls_left -= 1
         self.reservations += 1
         return True
 

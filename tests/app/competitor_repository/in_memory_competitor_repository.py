@@ -12,8 +12,8 @@ CREATED_AT = datetime(2026, 9, 1, tzinfo=UTC)
 MAX_PAGE_SIZE = 200
 
 
-class FakeCompetitorRepository:
-    """In memory, raising the same errors as the real one. Snapshots are returned as given."""
+class InMemoryCompetitorRepository:
+    """A fake: in memory, raising the same errors as the real one; snapshots are not paged."""
 
     def __init__(self) -> None:
         self._tracked: dict[str, Competitor] = {}

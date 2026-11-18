@@ -5,8 +5,8 @@ from competitor_pulse.poller.rate_limiter import RateLimiter
 pytestmark = pytest.mark.anyio
 
 
-class FakeTime:
-    """A clock that only moves when the limiter sleeps."""
+class ManualClock:
+    """A fake clock that only moves when the limiter sleeps."""
 
     def __init__(self) -> None:
         self.now = 1000.0
@@ -20,12 +20,12 @@ class FakeTime:
         self.now += seconds
 
 
-def limiter(time: FakeTime, requests_per_second: float = 4) -> RateLimiter:
+def limiter(time: ManualClock, requests_per_second: float = 4) -> RateLimiter:
     return RateLimiter(requests_per_second, clock=time.clock, sleep=time.sleep)
 
 
 async def test_requests_are_spaced_evenly():
-    time = FakeTime()
+    time = ManualClock()
     rate_limiter = limiter(time)
 
     for _ in range(5):
@@ -35,7 +35,7 @@ async def test_requests_are_spaced_evenly():
 
 
 async def test_unused_time_is_not_saved_up_for_a_burst():
-    time = FakeTime()
+    time = ManualClock()
     rate_limiter = limiter(time)
     await rate_limiter.acquire()
 
@@ -47,7 +47,7 @@ async def test_unused_time_is_not_saved_up_for_a_burst():
 
 
 async def test_pause_holds_back_the_next_request():
-    time = FakeTime()
+    time = ManualClock()
     rate_limiter = limiter(time)
     await rate_limiter.acquire()
 
@@ -59,7 +59,7 @@ async def test_pause_holds_back_the_next_request():
 
 
 async def test_short_pause_does_not_shorten_the_spacing():
-    time = FakeTime()
+    time = ManualClock()
     rate_limiter = limiter(time)
     await rate_limiter.acquire()
 

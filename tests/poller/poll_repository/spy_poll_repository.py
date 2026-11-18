@@ -4,8 +4,8 @@ from competitor_pulse.models import PollResult
 from competitor_pulse.types import CompetitorID
 
 
-class FakePollRepository:
-    """In memory: claims hand out `due` in order; saves of untracked competitors are dropped."""
+class SpyPollRepository:
+    """A spy: claims hand out `due` in order, and saves and requeues are recorded."""
 
     def __init__(self) -> None:
         self.tracked: set[str] = set()

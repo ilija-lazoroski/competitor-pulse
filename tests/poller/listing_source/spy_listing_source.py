@@ -2,8 +2,8 @@ from competitor_pulse.models import Listing
 from competitor_pulse.types import CompetitorID
 
 
-class FakeListingSource:
-    """Answers each competitor with a given listing, or raises a given error."""
+class SpyListingSource:
+    """A spy: answers each competitor with a given listing or error, and records each fetch."""
 
     def __init__(self, answers: dict[str, Listing | Exception]):
         self._answers = answers
