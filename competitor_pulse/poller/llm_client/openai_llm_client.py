@@ -17,8 +17,8 @@ from competitor_pulse.poller.summary_prompt import CLOSING_MARKER, OPENING_MARKE
 
 # A summary is shown as plain text: links and markup in an answer mean the model did not do
 # what it was asked, possibly because the listing it was given tried to instruct it.
-_LINK: Final = re.compile(r"https?://|www\.", re.IGNORECASE)
-_MARKUP: Final = re.compile(
+_LINK: Final[re.Pattern[str]] = re.compile(r"https?://|www\.", re.IGNORECASE)
+_MARKUP: Final[re.Pattern[str]] = re.compile(
     r"<[a-z/!][^>]*>"  # HTML tags
     r"|```"  # code blocks
     r"|\*\*|__"  # bold

@@ -11,7 +11,7 @@ from competitor_pulse.poller.poll_repository.poll_repository import PollReposito
 from competitor_pulse.tables import competitors, is_tracked, snapshots
 from competitor_pulse.types import CompetitorID, PollOutcome, changes_adapter
 
-_LISTING_OUTCOMES: Final = (PollOutcome.OK, PollOutcome.INCOMPLETE)
+_LISTING_OUTCOMES: Final[tuple[PollOutcome, ...]] = (PollOutcome.OK, PollOutcome.INCOMPLETE)
 
 
 class PostgresPollRepository(PollRepository):

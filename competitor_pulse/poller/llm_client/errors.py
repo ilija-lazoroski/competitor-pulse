@@ -10,7 +10,9 @@ from typing import Final
 from competitor_pulse.errors import CompetitorPulseError
 
 # Besides server errors (5xx), the statuses where the same request can succeed later.
-_RETRYABLE_STATUSES: Final = frozenset({HTTPStatus.REQUEST_TIMEOUT, HTTPStatus.TOO_MANY_REQUESTS})
+_RETRYABLE_STATUSES: Final[frozenset[HTTPStatus]] = frozenset(
+    {HTTPStatus.REQUEST_TIMEOUT, HTTPStatus.TOO_MANY_REQUESTS}
+)
 
 
 class LLMError(CompetitorPulseError):

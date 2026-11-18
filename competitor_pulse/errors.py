@@ -68,7 +68,7 @@ PollError = Annotated[
     | PollIncomplete,
     Field(discriminator="kind"),
 ]
-poll_error_adapter: Final = TypeAdapter(PollError)
+poll_error_adapter: Final[TypeAdapter[PollError]] = TypeAdapter(PollError)
 
 
 # Stored in snapshots.summary_error: why the LLM did not give a summary.
@@ -96,4 +96,4 @@ SummaryError = Annotated[
     SummaryTimeout | SummaryConnectionError | SummaryHTTPError | SummaryUnusableAnswer,
     Field(discriminator="kind"),
 ]
-summary_error_adapter: Final = TypeAdapter(SummaryError)
+summary_error_adapter: Final[TypeAdapter[SummaryError]] = TypeAdapter(SummaryError)

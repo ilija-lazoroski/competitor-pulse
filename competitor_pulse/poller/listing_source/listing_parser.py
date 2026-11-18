@@ -17,25 +17,27 @@ from competitor_pulse.models import Listing
 from competitor_pulse.types import ListingField, Price, PricePeriod
 
 # Amounts always have two decimals, so 29 and 29.00 are written, stored and compared alike.
-CENTS: Final = Decimal("0.01")
-FREE_PRICE: Final = Price(amount=Decimal(0).quantize(CENTS), currency=None, period=None, unit=None)
+CENTS: Final[Decimal] = Decimal("0.01")
+FREE_PRICE: Final[Price] = Price(
+    amount=Decimal(0).quantize(CENTS), currency=None, period=None, unit=None
+)
 
-CURRENCY_BY_SYMBOL: Final = {"$": "USD", "€": "EUR", "£": "GBP"}
-PERIOD_BY_WORD: Final = {
+CURRENCY_BY_SYMBOL: Final[dict[str, str]] = {"$": "USD", "€": "EUR", "£": "GBP"}
+PERIOD_BY_WORD: Final[dict[str, PricePeriod]] = {
     "mo": PricePeriod.MONTH,
     "month": PricePeriod.MONTH,
     "yr": PricePeriod.YEAR,
     "year": PricePeriod.YEAR,
 }
 
-_FREE = re.compile(r"free(?: forever)?", re.IGNORECASE)
+_FREE: Final[re.Pattern[str]] = re.compile(r"free(?: forever)?", re.IGNORECASE)
 # A currency symbol or ISO code, the amount, then what is left: "/seat/mo", "per month", ...
-_PAID = re.compile(
+_PAID: Final[re.Pattern[str]] = re.compile(
     r"(?:(?P<symbol>[$€£])\s*|(?P<code>[A-Z]{3})\s+)"
     r"(?P<amount>\d{1,10}(?:\.\d{1,2})?)\s*"
     r"(?P<rest>.*)"
 )
-_SEPARATOR = re.compile(r"\s*(?:/|\bper\b)\s*", re.IGNORECASE)
+_SEPARATOR: Final[re.Pattern[str]] = re.compile(r"\s*(?:/|\bper\b)\s*", re.IGNORECASE)
 
 
 def clean_text(value: Any) -> str | None:

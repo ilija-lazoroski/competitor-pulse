@@ -43,8 +43,8 @@ def database_environment(monkeypatch: pytest.MonkeyPatch):
 # docker compose: postgresql://postgres:postgres@localhost:5432/postgres. Each test gets its own
 # new database, which is dropped afterwards. Without the variable these tests are skipped.
 
-TEST_DATABASE_URL_ENV_KEY: Final = "CP_TEST_DATABASE_URL"
-PYPROJECT_PATH: Final = Path(__file__).parents[1] / "pyproject.toml"
+TEST_DATABASE_URL_ENV_KEY: Final[str] = "CP_TEST_DATABASE_URL"
+PYPROJECT_PATH: Final[Path] = Path(__file__).parents[1] / "pyproject.toml"
 
 
 @pytest.fixture

@@ -10,11 +10,13 @@ from typing import Annotated, Final, Self, TypeAlias
 from pydantic import Field, StringConstraints, TypeAdapter, model_validator
 from service_kit import ServiceKitBaseModel
 
-CURRENCY_PATTERN: Final = r"^[A-Z]{3}$"
+# The patterns stay strings: Pydantic compiles them once into its own (Rust) regex engine,
+# and tables.py puts them into the CHECK constraints.
+CURRENCY_PATTERN: Final[str] = r"^[A-Z]{3}$"
 # What a price is charged per, like "seat" or "1k events": lowercase words, one space apart.
-PRICE_UNIT_PATTERN: Final = r"^[a-z0-9]+( [a-z0-9]+)*$"
-PRICE_UNIT_MAX_LENGTH: Final = 20
-COMPETITOR_ID_PATTERN: Final = r"^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$"
+PRICE_UNIT_PATTERN: Final[str] = r"^[a-z0-9]+( [a-z0-9]+)*$"
+PRICE_UNIT_MAX_LENGTH: Final[int] = 20
+COMPETITOR_ID_PATTERN: Final[str] = r"^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$"
 
 # Lowercase slugs like "acme-crm". The id goes into the source URL (/listings/{id}), so
 # slashes, dots and other path characters must never get through.
@@ -95,4 +97,4 @@ class FieldChange(ServiceKitBaseModel):
 
 
 Changes = dict[ListingField, FieldChange]
-changes_adapter: Final = TypeAdapter(Changes)
+changes_adapter: Final[TypeAdapter[Changes]] = TypeAdapter(Changes)

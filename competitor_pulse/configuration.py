@@ -8,7 +8,7 @@ from service_kit import ServiceKitBaseModel
 from service_kit.configuration import ServiceConfiguration
 from service_kit.logging import logger
 
-CONFIG_PATH_ENV_KEY: Final = "CP_CONFIG_PATH"
+CONFIG_PATH_ENV_KEY: Final[str] = "CP_CONFIG_PATH"
 
 
 class DatabaseConfiguration(BaseSettings, ServiceKitBaseModel):

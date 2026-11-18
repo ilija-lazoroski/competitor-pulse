@@ -12,8 +12,8 @@ from service_kit import ServiceKitBaseModel
 from competitor_pulse.models import Listing, ListingValues, PollResult
 from competitor_pulse.types import Changes, FieldChange, ListingField, PollOutcome, SummaryStatus
 
-DELISTED_SUMMARY: Final = "The listing is no longer on the source."
-RELISTED_UNCHANGED_SUMMARY: Final = "The listing is back, unchanged."
+DELISTED_SUMMARY: Final[str] = "The listing is no longer on the source."
+RELISTED_UNCHANGED_SUMMARY: Final[str] = "The listing is back, unchanged."
 
 
 class ChangeDecision(ServiceKitBaseModel):

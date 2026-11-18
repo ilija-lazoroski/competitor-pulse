@@ -2,8 +2,8 @@ from typing import Final
 
 from competitor_pulse.types import Price, PricePeriod
 
-CURRENCY_SYMBOLS: Final = {"USD": "$", "EUR": "€", "GBP": "£"}
-PERIOD_SUFFIXES: Final = {
+CURRENCY_SYMBOLS: Final[dict[str, str]] = {"USD": "$", "EUR": "€", "GBP": "£"}
+PERIOD_SUFFIXES: Final[dict[PricePeriod, str]] = {
     PricePeriod.MONTH: "/mo",
     PricePeriod.YEAR: "/yr",
     PricePeriod.ONE_TIME: " one-time",

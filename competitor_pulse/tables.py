@@ -8,6 +8,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Column,
+    ColumnElement,
     Date,
     DateTime,
     ForeignKey,
@@ -32,7 +33,7 @@ from competitor_pulse.types import (
 )
 
 # Constraint and index names are derived from these, so migrations name them the same way.
-NAMING_CONVENTION: Final = {
+NAMING_CONVENTION: Final[dict[str, str]] = {
     "ix": "ix_%(table_name)s_%(column_0_N_name)s",
     "uq": "uq_%(table_name)s_%(column_0_N_name)s",
     "ck": "ck_%(table_name)s_%(constraint_name)s",
@@ -43,7 +44,7 @@ NAMING_CONVENTION: Final = {
 metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 # Python None must be SQL NULL, not the JSON value null: the check constraints test IS NULL.
-JsonbOrNull: Final = JSONB(none_as_null=True)
+JsonbOrNull: Final[JSONB] = JSONB(none_as_null=True)
 
 
 def _pg_enum(enum: type[StrEnum], name: str) -> ENUM:
@@ -56,9 +57,9 @@ def _pg_enum(enum: type[StrEnum], name: str) -> ENUM:
     return ENUM(enum, name=name, values_callable=lambda members: [m.value for m in members])
 
 
-poll_outcome_type: Final = _pg_enum(PollOutcome, "poll_outcome")
-summary_status_type: Final = _pg_enum(SummaryStatus, "summary_status")
-price_period_type: Final = _pg_enum(PricePeriod, "price_period")
+poll_outcome_type: Final[ENUM] = _pg_enum(PollOutcome, "poll_outcome")
+summary_status_type: Final[ENUM] = _pg_enum(SummaryStatus, "summary_status")
+price_period_type: Final[ENUM] = _pg_enum(PricePeriod, "price_period")
 
 
 competitors = Table(
@@ -84,7 +85,7 @@ competitors = Table(
 
 
 # A competitor is tracked until the user removes it.
-is_tracked: Final = competitors.c.removed_at.is_(None)
+is_tracked: Final[ColumnElement[bool]] = competitors.c.removed_at.is_(None)
 
 snapshots = Table(
     "snapshots",
